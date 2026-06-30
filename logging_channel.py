@@ -12,7 +12,7 @@ from aiogram import Bot
 from aiogram.types import LinkPreviewOptions
 
 from config import LOG_CHANNEL_ID, AUTO_SAVE_INTERVAL_SEC, log
-from helpers import html_escape, code, now_msk_str
+from helpers import html_escape, code, now_msk_str, pe
 from storage import store
 
 # ================== AUTOSAVE LOOP ==================
@@ -141,7 +141,8 @@ async def log_event(bot: Bot, category: str, lines: List[str]) -> None:
     if category == "audiodl":
         t_base = "#audiodl #audiodl23"
     header = f"🧾 Лог: <b>{html_escape(category)}</b>\n🕒 {now_msk_str()}"
-    await send_channel_log(bot, f"{t_base} {t_num}\n" + "\n".join([header, *lines]))
+    full_text = f"{t_base} {t_num}\n" + "\n".join([header, *lines])
+    await send_channel_log(bot, pe(full_text))
 
 async def log_admin_action_to_channel(bot: Bot, title: str, lines: List[str]) -> None:
     await log_event(

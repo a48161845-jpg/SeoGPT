@@ -8,7 +8,7 @@ from typing import List
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import SUPPORT_USERNAME, CRYPTO_DONATE_URL, BOT_SHARE_URL, STARS_MIN, STARS_MAX
-from helpers import html_escape, code
+from helpers import html_escape, code, pe
 
 # ================== STATS / TOP KEYBOARDS ==================
 def stats_kb() -> InlineKeyboardMarkup:
@@ -50,7 +50,7 @@ def top_kb() -> InlineKeyboardMarkup:
     )
 
 # ================== START ==================
-START_TEXT = (
+START_TEXT = pe(
     "👋 Добро пожаловать в TIKSAVES!\n\n"
     "📥 Скачивай контент из TikTok быстро и без лишних действий.\n\n"
     "Доступно:\n"
@@ -94,7 +94,7 @@ def stars_kb() -> InlineKeyboardMarkup:
         ]
     )
 
-DONATE_TEXT = (
+DONATE_TEXT = pe(
     "💛 <b>Поддержать TIKSAVES</b>\n\n"
     "Спасибо, что пользуешься ботом!\n\n"
     "Каждый донат помогает оплачивать:\n"
@@ -104,14 +104,14 @@ DONATE_TEXT = (
     "Поддержать проект можно через Telegram Stars или криптовалюту.\n\n"
     "Спасибо за поддержку! 💛"
 )
-STARS_MENU_TEXT = (
+STARS_MENU_TEXT = pe(
     "⭐ <b>Telegram Stars</b>\n\n"
     "Поддержать проект можно прямо в Telegram.\n\n"
     f"Выберите количество Stars\nили укажите своё значение.\n\n"
     f"⭐ От {STARS_MIN} до {STARS_MAX} Stars\n\n"
     "Спасибо за поддержку! 💛"
 )
-SUPPORT_TEXT = (
+SUPPORT_TEXT = pe(
     "🆘 <b>Поддержка</b>\n\n"
     "Возник вопрос или что-то не работает?\n\n"
     f"📨 Напишите: {html_escape(SUPPORT_USERNAME)}\n\n"
@@ -123,7 +123,7 @@ SUPPORT_TEXT = (
 SHARE_TEXT = "Нашел топового бота для скачивания видео и фото из TikTok. Переходи ☝️"
 
 # ================== HELP ==================
-HELP_TEXT = (
+HELP_TEXT = pe(
     "🧾 <b>Помощь</b>\n\n"
     "Добро пожаловать в справочный центр TIKSAVES.\n\n"
     "Выберите нужный раздел с помощью кнопок ниже 👇"
@@ -163,24 +163,24 @@ def help_section_kb() -> InlineKeyboardMarkup:
     )
 
 HELP_SECTIONS = {
-    "video": (
+    "video": pe(
         "🎬 <b>Скачать видео</b>\n\n"
         "1️⃣ Отправьте ссылку на TikTok.\n\n"
         "2️⃣ Нажмите «🎬 Скачать видео».\n\n"
         "3️⃣ Через несколько секунд бот отправит видео без водяного знака (если доступно)."
     ),
-    "photo": (
+    "photo": pe(
         "🖼 <b>Скачать фото</b>\n\n"
         "1️⃣ Отправьте ссылку на публикацию с фотографиями.\n\n"
         "2️⃣ Выберите нужные номера или нажмите «📥 Скачать всё».\n\n"
         "3️⃣ Получите выбранные изображения в хорошем качестве."
     ),
-    "music": (
+    "music": pe(
         "🎵 <b>Скачать музыку</b>\n\n"
         "После обработки ссылки нажмите «🎵 Музыка».\n\n"
         "Бот отправит оригинальную аудиодорожку из публикации."
     ),
-    "limits": (
+    "limits": pe(
         "⚠️ <b>Ограничения</b>\n\n"
         "Для стабильной работы действует защита от спама.\n\n"
         "• Между запросами есть небольшая задержка.\n"
@@ -188,7 +188,7 @@ HELP_SECTIONS = {
         "• Некоторые публикации могут быть недоступны из-за ограничений TikTok.\n\n"
         "Спасибо за понимание 💛"
     ),
-    "donate": (
+    "donate": pe(
         "💛 <b>Поддержать TIKSAVES</b>\n\n"
         "Спасибо, что пользуешься ботом!\n\n"
         "Каждый донат помогает оплачивать:\n"
@@ -198,7 +198,7 @@ HELP_SECTIONS = {
         "Поддержать проект можно через Telegram Stars или криптовалюту.\n\n"
         "Спасибо за поддержку! 💛"
     ),
-    "support": (
+    "support": pe(
         "🆘 <b>Поддержка</b>\n\n"
         "Возник вопрос или что-то не работает?\n\n"
         f"📨 Напишите: {html_escape(SUPPORT_USERNAME)}\n\n"
@@ -287,7 +287,7 @@ def admin_back_kb() -> InlineKeyboardMarkup:
         ]
     )
 
-ADMIN_MENU_TEXT = (
+ADMIN_MENU_TEXT = pe(
     "🛠 <b>Админ-панель</b>\n"
     "━━━━━━━━━━━━━━━━━━━━\n\n"
     "📊 <b>Статистика</b> — выбор периода\n"
@@ -299,7 +299,7 @@ ADMIN_MENU_TEXT = (
     "🧾 <b>Команды</b> — полный список\n"
 )
 
-ADMIN_HELP_TEXT = (
+ADMIN_HELP_TEXT = pe(
     "🧾 <b>Команды администратора</b>\n"
     "━━━━━━━━━━━━━━━━━━━━\n\n"
 
@@ -334,7 +334,7 @@ ADMIN_HELP_TEXT = (
     f"└ {code('/dblog')} — отчёт в лог-канал\n\n"
 
     "📣 <b>Рассылка</b>\n"
-    f"├ {code('/broadcast')} — пошаговая рассылка (текст → фото → закреп → предпросмотр)\n"
+    f"├ {code('/broadcast')} — пошаговая рассылка (текст → фото → итог с закрепом)\n"
     f"├ {code('/reminder_message')} — напоминание\n"
     f"├ {code('/advertisement_message')} — реклама\n"
     f"└ {code('/undo_broadcast')} — удалить последнюю рассылку\n"
@@ -368,20 +368,15 @@ def bcw_skip_photo_kb() -> InlineKeyboardMarkup:
         ]
     )
 
-def bcw_pin_kb() -> InlineKeyboardMarkup:
+def bcw_result_kb(pin: bool) -> InlineKeyboardMarkup:
+    """
+    Итоговый экран рассылки: 📌 — toggle закрепа (нажал — включил, нажал ещё раз — выключил),
+    🚀 Разослать, ❌ Отменить.
+    """
+    pin_label = "📌 Закреп: вкл" if pin else "📌 Закреп: выкл"
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Да", callback_data="bcw:pin_yes"),
-                InlineKeyboardButton(text="❌ Нет", callback_data="bcw:pin_no"),
-            ],
-            [InlineKeyboardButton(text="❌ Отменить рассылку", callback_data="bcw:abort")],
-        ]
-    )
-
-def bcw_preview_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
+            [InlineKeyboardButton(text=pin_label, callback_data="bcw:toggle_pin")],
             [
                 InlineKeyboardButton(text="🚀 Разослать", callback_data="bcw:send"),
                 InlineKeyboardButton(text="❌ Отменить", callback_data="bcw:abort"),

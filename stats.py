@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Tuple
 
 from aiogram.types import Message, LinkPreviewOptions
 
-from helpers import html_escape, msk_now, period_keys, week_range_str, iter_day_keys, format_msk
+from helpers import html_escape, msk_now, period_keys, week_range_str, iter_day_keys, format_msk, pe
 from storage import store
 from admin_log_file import log_admin
 from logging_channel import log_event, log_admin_action_to_channel, format_user_for_log
@@ -535,7 +535,7 @@ async def send_stats_message(message: Message, uid: int, label: str, mode: str, 
     )
     with contextlib.suppress(Exception):
         await message.bot.send_chat_action(message.chat.id, "typing")
-    text = _admin_stats_text(mode)
+    text = pe(_admin_stats_text(mode))
     if edit and message:
         with contextlib.suppress(Exception):
             await message.edit_text(text, parse_mode="HTML", reply_markup=stats_kb(), link_preview_options=LinkPreviewOptions(is_disabled=True))
@@ -559,7 +559,7 @@ async def send_stats_range_message(message: Message, uid: int, label: str, start
     )
     with contextlib.suppress(Exception):
         await message.bot.send_chat_action(message.chat.id, "typing")
-    text = _admin_stats_range_text(start_dt, end_dt)
+    text = pe(_admin_stats_range_text(start_dt, end_dt))
     await message.answer(
         text,
         parse_mode="HTML",
@@ -576,7 +576,7 @@ async def send_top_message(message: Message, uid: int, label: str, mode: str, *,
     )
     with contextlib.suppress(Exception):
         await message.bot.send_chat_action(message.chat.id, "typing")
-    text = _top_text_for_mode(mode)
+    text = pe(_top_text_for_mode(mode))
     if edit and message:
         with contextlib.suppress(Exception):
             await message.edit_text(text, parse_mode="HTML", reply_markup=top_kb(), link_preview_options=LinkPreviewOptions(is_disabled=True))
@@ -595,5 +595,5 @@ async def send_top_range_message(message: Message, uid: int, label: str, start_d
     )
     with contextlib.suppress(Exception):
         await message.bot.send_chat_action(message.chat.id, "typing")
-    text = _top_text_for_range(start_dt, end_dt)
+    text = pe(_top_text_for_range(start_dt, end_dt))
     await message.answer(text, parse_mode="HTML", link_preview_options=LinkPreviewOptions(is_disabled=True), reply_markup=top_kb())

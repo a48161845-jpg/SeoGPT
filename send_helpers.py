@@ -21,7 +21,7 @@ from config import (
     MAX_VIDEO_BYTES,
     MAX_AUDIO_BYTES,
 )
-from helpers import html_escape, code, clamp_reason
+from helpers import html_escape, code, clamp_reason, pe
 from storage import store
 from providers import BaseProvider
 from logging_channel import log_event, format_user_for_log
@@ -94,12 +94,12 @@ async def send_video_smart(
             if progress_msg:
                 with contextlib.suppress(Exception):
                     await progress_msg.edit_text(
-                        "⏳ <b>Скачиваю… понадобится немного больше времени...</b>",
+                        pe("⏳ <b>Скачиваю… понадобится немного больше времени...</b>"),
                         parse_mode="HTML",
                     )
             else:
                 progress_msg = await message.answer(
-                    "⏳ <b>Скачиваю… понадобится немного больше времени...</b>",
+                    pe("⏳ <b>Скачиваю… понадобится немного больше времени...</b>"),
                     parse_mode="HTML",
                 )
 
@@ -138,21 +138,21 @@ async def send_description(message: Message, description: Optional[str], *, uid:
     Возвращает True если что-то отправлено.
     """
     if not description:
-        await message.answer("📑 У этой публикации нет описания.")
+        await message.answer(pe("📑 У этой публикации нет описания."), parse_mode="HTML")
         return False
 
     text = description.strip()
     if not text:
-        await message.answer("📑 У этой публикации нет описания.")
+        await message.answer(pe("📑 У этой публикации нет описания."), parse_mode="HTML")
         return False
 
     if len(text) <= 4000:
-        await message.answer(f"📑 Описание:\n\n<code>{html_escape(text)}</code>", parse_mode="HTML")
+        await message.answer(pe(f"📑 Описание:\n\n<code>{html_escape(text)}</code>"), parse_mode="HTML")
     else:
         tmp = Path(f"tmp_desc_{uid or 0}_{int(time.time())}.txt")
         try:
             tmp.write_text(text, encoding="utf-8")
-            await message.answer_document(FSInputFile(tmp, filename="description.txt"), caption="📑 Описание (текст слишком длинный для сообщения)")
+            await message.answer_document(FSInputFile(tmp, filename="description.txt"), caption=pe("📑 Описание (текст слишком длинный для сообщения)"), parse_mode="HTML")
         finally:
             with contextlib.suppress(Exception):
                 tmp.unlink(missing_ok=True)
