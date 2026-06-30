@@ -30,6 +30,7 @@ from helpers import (
     extract_tiktok_url,
     normalize_tiktok_url,
     resolve_tiktok_redirect,
+    is_admin,
 )
 from storage import store
 from user_label import resolve_user_label
@@ -85,17 +86,18 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
     if text.startswith("/"):
         return
 
-    ok_dl, wait_dl = lim.dl_hit(uid)
-    if not ok_dl:
-        await message.answer(MSG_DL.format(n=wait_dl))
-        await add_download_strike(
-            message.bot,
-            uid,
-            label,
-            "Лимит скачиваний",
-            src=url or text,
-        )
-        return
+    if not is_admin(uid):
+        ok_dl, wait_dl = lim.dl_hit(uid)
+        if not ok_dl:
+            await message.answer(MSG_DL.format(n=wait_dl))
+            await add_download_strike(
+                message.bot,
+                uid,
+                label,
+                "Лимит скачиваний",
+                src=url or text,
+            )
+            return
 
     status = await message.answer("⏳ Скачиваю…")
 

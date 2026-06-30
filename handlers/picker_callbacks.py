@@ -10,7 +10,7 @@ from aiogram.types import CallbackQuery
 from globals_state import dp
 import globals_state
 from config import PAGE_SIZE, MSG_DL, MSG_PHOTO, CAPTION_PHOTO, CAPTION_VIDEO
-from helpers import code
+from helpers import code, is_admin
 from storage import store
 from user_label import resolve_user_label
 from limiters import lim
@@ -49,6 +49,8 @@ async def picker_cb(call: CallbackQuery):
     act = parts[1] if len(parts) > 1 else ""
 
     async def gate_download() -> bool:
+        if is_admin(uid):
+            return True
         ok, wait = lim.dl_hit(uid)
         if ok:
             return True
@@ -63,6 +65,8 @@ async def picker_cb(call: CallbackQuery):
         return False
 
     async def gate_photo_volume(photos_cnt: int, src: str) -> bool:
+        if is_admin(uid):
+            return True
         ok, wait = lim.photo_hit(uid, photos_cnt)
         if ok:
             return True
@@ -167,15 +171,12 @@ async def picker_cb(call: CallbackQuery):
         return
 
     if act == "music":
-        if not await gate_download():
-            await call.answer()
+        if not st.get("music"):
+            await call.answer("🎵 Музыка для этой публикации недоступна.", show_alert=True)
             return
-        pending.pop(uid, None)
-        with contextlib.suppress(Exception):
-            await call.message.delete()
-        await call.answer("Отправляю музыку…")
-        if globals_state.g_provider:
-            await send_music_if_any(call.message, globals_state.g_provider, st.get("music"), uid=uid, label=label, src=st.get("src"))
+        st["music_selected"] = not st.get("music_selected", False)
+        await call.answer("✅ Добавлено" if st["music_selected"] else "Убрано")
+        await call.message.edit_reply_markup(reply_markup=picker_kb(uid))
         return
 
     if act == "sendall":
@@ -198,10 +199,10 @@ async def picker_cb(call: CallbackQuery):
         store.inc_download(uid, "photo", items=cnt)
 
         desc_sent = False
-        if st.get("desc_selected") and st.get("description"):
+        if st.get("description"):
             desc_sent = await send_description(call.message, st.get("description"), uid=uid)
 
-        if globals_state.g_provider:
+        if st.get("music") and globals_state.g_provider:
             await send_music_if_any(call.message, globals_state.g_provider, st.get("music"), uid=uid, label=label, src=st.get("src"))
 
         await log_event(
@@ -256,7 +257,7 @@ async def picker_cb(call: CallbackQuery):
         if st.get("desc_selected") and st.get("description"):
             desc_sent = await send_description(call.message, st.get("description"), uid=uid)
 
-        if globals_state.g_provider:
+        if st.get("music_selected") and st.get("music") and globals_state.g_provider:
             await send_music_if_any(call.message, globals_state.g_provider, st.get("music"), uid=uid, label=label, src=st.get("src"))
 
         await log_event(
