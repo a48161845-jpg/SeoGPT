@@ -1,5 +1,0 @@
-aiogram
-aiohttp
-aiohttp-socks
-python-dotenv
-numpy
