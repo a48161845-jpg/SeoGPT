@@ -32,9 +32,16 @@ def chunk(items: List[str], size: int) -> List[List[str]]:
 
 
 async def send_photos(message: Message, urls: List[str], caption_html: str = CAPTION_PHOTO) -> int:
+    """
+    Отправляет фото альбомами (до MEDIA_GROUP_LIMIT штук за раз).
+    Возвращает РЕАЛЬНОЕ количество успешно отправленных фото —
+    если какой-то альбом не ушёл (битая ссылка/таймаут), считаем
+    только то, что реально долетело до пользователя.
+    """
     packs = chunk(urls, MEDIA_GROUP_LIMIT)
     total = len(urls)
     sent = 0
+    actually_sent = 0
     for pack in packs:
         media: List[InputMediaPhoto] = []
         for i, u in enumerate(pack):
@@ -46,15 +53,22 @@ async def send_photos(message: Message, urls: List[str], caption_html: str = CAP
 
         try:
             await message.answer_media_group(media)
+            actually_sent += len(pack)
         except TelegramRetryAfter as e:
             wait = int(getattr(e, "retry_after", 2)) + 1
             await asyncio.sleep(wait)
-            await message.answer_media_group(media)
+            try:
+                await message.answer_media_group(media)
+                actually_sent += len(pack)
+            except Exception:
+                pass  # пакет так и не ушёл — не считаем его отправленным
+        except Exception:
+            pass  # битый пакет (например невалидная ссылка фото) — пропускаем, не прерывая остальные
 
         await asyncio.sleep(random.uniform(ALBUM_PAUSE_MIN, ALBUM_PAUSE_MAX))
         sent += len(pack)
 
-    return len(urls)
+    return actually_sent
 
 
 async def send_video_smart(
@@ -133,7 +147,7 @@ async def send_description(message: Message, description: Optional[str], *, uid:
         return False
 
     if len(text) <= 4000:
-        await message.answer(f"📑 <b>Описание:</b>\n\n{html_escape(text)}", parse_mode="HTML")
+        await message.answer(f"📑 Описание:\n\n<code>{html_escape(text)}</code>", parse_mode="HTML")
     else:
         tmp = Path(f"tmp_desc_{uid or 0}_{int(time.time())}.txt")
         try:

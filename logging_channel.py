@@ -61,7 +61,13 @@ def numbered_tag_for(category: str) -> str:
     return f"#{CAT_TAG.get(category, 'log')}{seq}"
 
 def format_user_for_log(label: str, uid: int) -> str:
-    """Кликабельное упоминание: имя/юзернейм со ссылкой на профиль."""
+    """
+    Кликабельное упоминание пользователя для логов.
+    Если есть username — ссылка https://t.me/username (кликабельна всегда).
+    Если username нет — tg://user?id=... (работает только если у админа есть
+    общий чат с пользователем; Telegram не даёт более надёжного способа
+    сослаться на человека без username и без диалога).
+    """
     s = (label or "").strip()
     m = re.search(r"\((\d+)\)\s*$", s)
     name_part = s
@@ -69,8 +75,17 @@ def format_user_for_log(label: str, uid: int) -> str:
         name_part = s[:m.start()].strip()
     if not name_part:
         name_part = str(uid)
-    # <a href="tg://user?id=..."> — кликабельно в Telegram (HTML parse mode)
-    return f'<a href="tg://user?id={uid}">{html_escape(name_part)}</a> ({code(uid)})'
+
+    username = None
+    if name_part.startswith("@"):
+        username = name_part[1:].strip()
+
+    display = html_escape(name_part)
+    if username:
+        href = f"https://t.me/{username}"
+    else:
+        href = f"tg://user?id={uid}"
+    return f'<a href="{href}">{display}</a> ({code(uid)})'
 
 _log_queue: "asyncio.Queue[Tuple[int, str]]" = asyncio.Queue(maxsize=2000)
 _log_worker_task: Optional[asyncio.Task] = None

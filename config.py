@@ -57,7 +57,7 @@ STARS_MAX = int(os.getenv("STARS_MAX", "1000"))
 WAITING_STARS_TTL_SEC = 120
 
 # ========= GLOBAL LIMITS =========
-GLOBAL_CONCURRENCY = 1
+GLOBAL_CONCURRENCY = 8  # одновременных скачиваний на весь бот — не блокирует других пользователей очередью
 
 # ========= SPAM LIMIT (тихий cooldown, без страйков) =========
 EVENT_WINDOW_SEC = 15

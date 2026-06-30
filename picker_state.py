@@ -77,11 +77,16 @@ def picker_kb(uid: int) -> InlineKeyboardMarkup:
     if row:
         rows.append(row)
 
+    has_music: bool = bool(st.get("music"))
+    music_selected: bool = bool(st.get("music_selected", False))
+
     rows.append([InlineKeyboardButton(text="📄 Выделить страницу", callback_data="pk:selpage")])
     rows.append([InlineKeyboardButton(text="📥 Скачать всё", callback_data="pk:sendall")])
-    if st.get("video_slideshow") or st.get("video"):
+    if st.get("video_slideshow"):
         rows.append([InlineKeyboardButton(text="🤳 Фото-видео", callback_data="pk:photovideo")])
-    rows.append([InlineKeyboardButton(text="🎵 Музыка", callback_data="pk:music")])
+    if has_music:
+        music_txt = f"{'✅ ' if music_selected else ''}🎵 Музыка"
+        rows.append([InlineKeyboardButton(text=music_txt, callback_data="pk:music")])
     if has_desc:
         desc_txt = f"{'✅ ' if desc_selected else ''}📑 Описание"
         rows.append([InlineKeyboardButton(text=desc_txt, callback_data="pk:desc")])
