@@ -36,9 +36,11 @@ async def ban_cmd(message: Message):
     parts = (message.text or "").split(maxsplit=3)
     if len(parts) < 4 or not parts[1].isdigit():
         await message.answer(
-            "❌ Формат:\n"
-            f"{code('/ban 123 2h причина')}\n"
-            "Длительность: 30m, 6h, 2d, 1d12h, 3h30m",
+            pe(
+                "❌ Формат:\n"
+                f"{code('/ban 123 2h причина')}\n"
+                "Длительность: 30m, 6h, 2d, 1d12h, 3h30m"
+            ),
             parse_mode="HTML",
         )
         return
@@ -59,10 +61,12 @@ async def ban_cmd(message: Message):
         who_label = await resolve_user_label(message.bot, uid)
         store.set_user_label(uid, who_label)
         await message.answer(
-            "ℹ️ Пользователь уже в бане.\n\n"
-            f"👤 Кого: <b>{format_user_for_log(who_label, uid)}</b>\n"
-            f"⏳ До: <b>{format_msk(until_existing)} МСК</b>\n"
-            f"📌 Причина: <b>{reason_existing}</b>",
+            pe(
+                "ℹ️ Пользователь уже в бане.\n\n"
+                f"👤 Кого: <b>{format_user_for_log(who_label, uid)}</b>\n"
+                f"⏳ До: <b>{format_msk(until_existing)} МСК</b>\n"
+                f"📌 Причина: <b>{reason_existing}</b>"
+            ),
             parse_mode="HTML",
         )
         return
@@ -94,10 +98,12 @@ async def ban_cmd(message: Message):
     )
 
     await message.answer(
-        "🛑 Пользователь забанен.\n\n"
-        f"👤 Кого: <b>{format_user_for_log(target_label, uid)}</b>\n"
-        f"⏳ До: <b>{format_msk(until)} МСК</b>\n"
-        f"📌 Причина: <b>{html_escape(reason)}</b>",
+        pe(
+            "🛑 Пользователь забанен.\n\n"
+            f"👤 Кого: <b>{format_user_for_log(target_label, uid)}</b>\n"
+            f"⏳ До: <b>{format_msk(until)} МСК</b>\n"
+            f"📌 Причина: <b>{html_escape(reason)}</b>"
+        ),
         parse_mode="HTML",
     )
 
@@ -115,7 +121,7 @@ async def unban_cmd(message: Message):
 
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) != 2 or not parts[1].isdigit():
-        await message.answer(f"Использование: {code('/unban 123')}", parse_mode="HTML")
+        await message.answer(pe(f"Использование: {code('/unban 123')}"), parse_mode="HTML")
         return
 
     uid = int(parts[1])
@@ -137,9 +143,9 @@ async def unban_cmd(message: Message):
         ],
     )
     if existed:
-        await message.answer(f"✅ Разбан: <b>{format_user_for_log(target_label, uid)}</b>", parse_mode="HTML")
+        await message.answer(pe(f"✅ Разбан: <b>{format_user_for_log(target_label, uid)}</b>"), parse_mode="HTML")
     else:
-        await message.answer(f"ℹ️ Пользователь не в бане: <b>{format_user_for_log(target_label, uid)}</b>", parse_mode="HTML")
+        await message.answer(pe(f"ℹ️ Пользователь не в бане: <b>{format_user_for_log(target_label, uid)}</b>"), parse_mode="HTML")
 
 
 @dp.message(Command("banlist"))
@@ -162,7 +168,7 @@ async def banlist_cmd(message: Message):
     )
 
     if not bans:
-        await message.answer("✅ Активных банов нет.")
+        await message.answer(pe("✅ Активных банов нет."), parse_mode="HTML")
         return
 
     lines = ["🚫 <b>Активные баны</b>\n\n"]
@@ -188,7 +194,7 @@ async def baninfo_cmd(message: Message):
 
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) != 2 or not parts[1].isdigit():
-        await message.answer(f"Использование: {code('/baninfo 123')}", parse_mode="HTML")
+        await message.answer(pe(f"Использование: {code('/baninfo 123')}"), parse_mode="HTML")
         return
 
     uid = int(parts[1])
@@ -207,7 +213,7 @@ async def baninfo_cmd(message: Message):
     )
 
     if not ban:
-        await message.answer(f"ℹ️ Не в бане: <b>{format_user_for_log(who_label, uid)}</b>", parse_mode="HTML")
+        await message.answer(pe(f"ℹ️ Не в бане: <b>{format_user_for_log(who_label, uid)}</b>"), parse_mode="HTML")
         return
 
     until = int(ban.get("until", 0))
@@ -216,11 +222,13 @@ async def baninfo_cmd(message: Message):
     by_label = store.get_user_label(by)
 
     await message.answer(
-        "🚫 <b>Информация о бане</b>\n\n"
-        f"👤 Пользователь: <b>{format_user_for_log(who_label, uid)}</b>\n"
-        f"⏳ До: <b>{format_msk(until)} МСК</b>\n"
-        f"📌 Причина: <b>{reason}</b>\n"
-        f"👑 Кто выдал: <b>{format_user_for_log(by_label, by)}</b>",
+        pe(
+            "🚫 <b>Информация о бане</b>\n\n"
+            f"👤 Пользователь: <b>{format_user_for_log(who_label, uid)}</b>\n"
+            f"⏳ До: <b>{format_msk(until)} МСК</b>\n"
+            f"📌 Причина: <b>{reason}</b>\n"
+            f"👑 Кто выдал: <b>{format_user_for_log(by_label, by)}</b>"
+        ),
         parse_mode="HTML",
     )
 
@@ -238,7 +246,7 @@ async def info_cmd(message: Message):
 
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) != 2:
-        await message.answer(f"Использование: {code('/info 123')} или {code('/info @username')}", parse_mode="HTML")
+        await message.answer(pe(f"Использование: {code('/info 123')} или {code('/info @username')}"), parse_mode="HTML")
         return
 
     raw = parts[1].strip()
@@ -289,22 +297,24 @@ async def info_cmd(message: Message):
     username_line = f"👤 Username: @{html_escape(username)}\n" if username else ""
 
     await message.answer(
-        "👤 <b>Информация о пользователе</b>\n\n"
-        f"🆔 ID: <b>{uid}</b>\n"
-        f"{username_line}"
-        f"<a href=\"tg://user?id={uid}\">Открыть профиль</a>\n\n"
-        "━━━━━━━━━━━━━━━\n\n"
-        f"🗓 Первый визит\n└ {joined}\n\n"
-        f"🕒 Последняя активность\n└ {last_seen}\n\n"
-        f"🚫 Статус\n└ {status_text}\n\n"
-        "━━━━━━━━━━━━━━━\n\n"
-        "📥 <b>Статистика</b>\n\n"
-        f"🎬 Видео: {v_sent}\n"
-        f"🖼 Фото: {p_sent}\n"
-        f"🎵 Музыка: {a_sent}\n\n"
-        f"⭐ Пожертвовано:\n{stars} Stars\n\n"
-        "━━━━━━━━━━━━━━━\n\n"
-        "🤖 TIKSAVES",
+        pe(
+            "👤 <b>Информация о пользователе</b>\n\n"
+            f"🆔 ID: <b>{uid}</b>\n"
+            f"{username_line}"
+            f"<a href=\"tg://user?id={uid}\">Открыть профиль</a>\n\n"
+            "━━━━━━━━━━━━━━━\n\n"
+            f"🗓 Первый визит\n└ {joined}\n\n"
+            f"🕒 Последняя активность\n└ {last_seen}\n\n"
+            f"🚫 Статус\n└ {status_text}\n\n"
+            "━━━━━━━━━━━━━━━\n\n"
+            "📥 <b>Статистика</b>\n\n"
+            f"🎬 Видео: {v_sent}\n"
+            f"🖼 Фото: {p_sent}\n"
+            f"🎵 Музыка: {a_sent}\n\n"
+            f"⭐ Пожертвовано:\n{stars} Stars\n\n"
+            "━━━━━━━━━━━━━━━\n\n"
+            "🤖 TIKSAVES"
+        ),
         parse_mode="HTML",
     )
 
@@ -324,8 +334,10 @@ async def broadcast_cmd(message: Message):
     broadcast_wizard[admin_id] = {"step": "text", "text": None, "photo": None, "pin": False}
     log_admin(admin_id, "broadcast_wizard_start")
     await message.answer(
-        "📣 <b>Новая рассылка</b>\n\n"
-        "Шаг 1/3: пришлите текст рассылки.",
+        pe(
+            "📣 <b>Новая рассылка</b>\n\n"
+            "Шаг 1/3: пришлите текст рассылки."
+        ),
         parse_mode="HTML",
     )
 
@@ -342,10 +354,10 @@ async def undo_broadcast_cmd(message: Message):
         return
 
     from broadcast import undo_last_broadcast
-    status = await message.answer("⏳ Удаляю последнюю рассылку…")
+    status = await message.answer(pe("⏳ Удаляю последнюю рассылку…"), parse_mode="HTML")
     removed = await undo_last_broadcast(admin_id, message.bot)
     if removed == -1:
-        await status.edit_text("❌ Нет данных о последней рассылке (или бот был перезапущен).")
+        await status.edit_text(pe("❌ Нет данных о последней рассылке (или бот был перезапущен)."), parse_mode="HTML")
         return
     log_admin(admin_id, "undo_broadcast", f"removed={removed}")
     await log_admin_action_to_channel(
@@ -356,7 +368,7 @@ async def undo_broadcast_cmd(message: Message):
             f"🗑 Удалено сообщений: <b>{removed}</b>",
         ],
     )
-    await status.edit_text(f"✅ Рассылка удалена у {removed} пользователей.")
+    await status.edit_text(pe(f"✅ Рассылка удалена у {removed} пользователей."), parse_mode="HTML")
 
 
 @dp.message(Command("reminder_message"))
@@ -375,10 +387,12 @@ async def reminder_message_cmd(message: Message):
     pending_admin_broadcast_source[admin_id] = "cmd"
     users_cnt = len(store.data.get("users", []))
     await message.answer(
-        "📣 <b>Подтверждение рассылки</b>\n\n"
-        "Тип: <b>Напоминание</b>\n"
-        f"Получателей: <b>{users_cnt}</b>\n\n"
-        "Отправить?",
+        pe(
+            "📣 <b>Подтверждение рассылки</b>\n\n"
+            "Тип: <b>Напоминание</b>\n"
+            f"Получателей: <b>{users_cnt}</b>\n\n"
+            "Отправить?"
+        ),
         parse_mode="HTML",
         reply_markup=admin_broadcast_confirm_kb("reminder"),
     )
@@ -400,10 +414,12 @@ async def advertisement_message_cmd(message: Message):
     pending_admin_broadcast_source[admin_id] = "cmd"
     users_cnt = len(store.data.get("users", []))
     await message.answer(
-        "📣 <b>Подтверждение рассылки</b>\n\n"
-        "Тип: <b>Реклама</b>\n"
-        f"Получателей: <b>{users_cnt}</b>\n\n"
-        "Отправить?",
+        pe(
+            "📣 <b>Подтверждение рассылки</b>\n\n"
+            "Тип: <b>Реклама</b>\n"
+            f"Получателей: <b>{users_cnt}</b>\n\n"
+            "Отправить?"
+        ),
         parse_mode="HTML",
         reply_markup=admin_broadcast_confirm_kb("advert"),
     )
@@ -423,9 +439,9 @@ async def dblog_cmd(message: Message):
 
     from db_report import send_db_report
     log_admin(admin_id, "dblog", "manual db report requested")
-    await message.answer("📊 Генерирую отчёт…")
+    await message.answer(pe("📊 Генерирую отчёт…"), parse_mode="HTML")
     await send_db_report(message.bot, title="Отчёт БД (ручной запрос)")
-    await message.answer("✅ Отчёт-файл отправлен в лог-канал.")
+    await message.answer(pe("✅ Отчёт-файл отправлен в лог-канал."), parse_mode="HTML")
 
 
 @dp.message(Command("dbfile"))
@@ -447,9 +463,9 @@ async def dbfile_cmd(message: Message):
         "Запрошен дамп БД",
         [f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>"],
     )
-    await message.answer("🗄 Формирую дамп БД…")
+    await message.answer(pe("🗄 Формирую дамп БД…"), parse_mode="HTML")
     await send_db_json(message.bot, admin_id)
-    await message.answer("✅ Файл отправлен.")
+    await message.answer(pe("✅ Файл отправлен."), parse_mode="HTML")
 
 
 @dp.message(Command("adminadd"))
@@ -470,7 +486,7 @@ async def adminadd_cmd(message: Message):
 
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) != 2 or not parts[1].strip().isdigit():
-        await message.answer(f"Использование: {code('/adminadd 123456789')}", parse_mode="HTML")
+        await message.answer(pe(f"Использование: {code('/adminadd 123456789')}"), parse_mode="HTML")
         return
 
     uid = int(parts[1].strip())
@@ -490,12 +506,12 @@ async def adminadd_cmd(message: Message):
             ],
         )
         await message.answer(
-            f"✅ Администратор добавлен: <b>{format_user_for_log(target_label, uid)}</b>",
+            pe(f"✅ Администратор добавлен: <b>{format_user_for_log(target_label, uid)}</b>"),
             parse_mode="HTML",
         )
     else:
         await message.answer(
-            f"ℹ️ Уже является администратором: <b>{format_user_for_log(target_label, uid)}</b>",
+            pe(f"ℹ️ Уже является администратором: <b>{format_user_for_log(target_label, uid)}</b>"),
             parse_mode="HTML",
         )
 
@@ -518,7 +534,7 @@ async def admindel_cmd(message: Message):
 
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) != 2 or not parts[1].strip().isdigit():
-        await message.answer(f"Использование: {code('/admindel 123456789')}", parse_mode="HTML")
+        await message.answer(pe(f"Использование: {code('/admindel 123456789')}"), parse_mode="HTML")
         return
 
     uid = int(parts[1].strip())
@@ -540,12 +556,12 @@ async def admindel_cmd(message: Message):
             ],
         )
         await message.answer(
-            f"✅ Администратор удалён: <b>{format_user_for_log(target_label, uid)}</b>",
+            pe(f"✅ Администратор удалён: <b>{format_user_for_log(target_label, uid)}</b>"),
             parse_mode="HTML",
         )
     else:
         await message.answer(
-            f"ℹ️ Не является дополнительным администратором: <b>{format_user_for_log(target_label, uid)}</b>",
+            pe(f"ℹ️ Не является дополнительным администратором: <b>{format_user_for_log(target_label, uid)}</b>"),
             parse_mode="HTML",
         )
 

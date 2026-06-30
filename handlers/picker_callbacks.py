@@ -10,7 +10,7 @@ from aiogram.types import CallbackQuery
 from globals_state import dp
 import globals_state
 from config import PAGE_SIZE, MSG_DL, MSG_PHOTO, CAPTION_PHOTO, CAPTION_VIDEO
-from helpers import code, is_admin
+from helpers import code, is_admin, pe
 from storage import store
 from user_label import resolve_user_label
 from limiters import lim
@@ -155,7 +155,7 @@ async def picker_cb(call: CallbackQuery):
                 ],
             )
         chat_id = call.message.chat.id if call.message else uid
-        await call.bot.send_message(chat_id, "👇", reply_markup=post_download_kb())
+        await call.bot.send_message(chat_id, pe("👇"), parse_mode="HTML", reply_markup=post_download_kb())
         return
 
     if act == "selpage":
@@ -226,7 +226,7 @@ async def picker_cb(call: CallbackQuery):
                 ],
             )
         chat_id = call.message.chat.id if call.message else uid
-        await call.bot.send_message(chat_id, "👇", reply_markup=post_download_kb())
+        await call.bot.send_message(chat_id, pe("👇"), parse_mode="HTML", reply_markup=post_download_kb())
         return
 
     if act == "go":
@@ -281,7 +281,7 @@ async def picker_cb(call: CallbackQuery):
                 ],
             )
         chat_id = call.message.chat.id if call.message else uid
-        await call.bot.send_message(chat_id, "👇", reply_markup=post_download_kb())
+        await call.bot.send_message(chat_id, pe("👇"), parse_mode="HTML", reply_markup=post_download_kb())
         return
 
     await call.answer()

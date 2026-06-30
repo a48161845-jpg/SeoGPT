@@ -21,7 +21,6 @@ from config import (
     WAITING_STARS_TTL_SEC,
     MSG_DL,
     CAPTION_VIDEO,
-    PHOTO_WARNING_TEXT,
 )
 from helpers import (
     html_escape,
@@ -31,6 +30,7 @@ from helpers import (
     normalize_tiktok_url,
     resolve_tiktok_redirect,
     is_admin,
+    pe,
 )
 from storage import store
 from user_label import resolve_user_label
@@ -67,7 +67,7 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
             if text.isdigit():
                 stars = int(text)
                 if not (STARS_MIN <= stars <= STARS_MAX):
-                    await message.answer(f"❌ Сумма должна быть {STARS_MIN}–{STARS_MAX} ⭐")
+                    await message.answer(pe(f"❌ Сумма должна быть {STARS_MIN}–{STARS_MAX} ⭐"), parse_mode="HTML")
                     return
                 waiting_stars_amount.pop(uid, None)
                 await send_stars_invoice(message.bot, uid, stars)
@@ -80,7 +80,7 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
         url = normalize_tiktok_url(url)
         last_video_src[uid] = url
     if not url and not text.startswith("/"):
-        await message.answer("📎 Пришли ссылку на TikTok.")
+        await message.answer(pe("📎 Пришли ссылку на TikTok."), parse_mode="HTML")
         return
 
     if text.startswith("/"):
@@ -99,12 +99,12 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
             )
             return
 
-    status = await message.answer("⏳ Скачиваю…")
+    status = await message.answer(pe("⏳ Скачиваю…"), parse_mode="HTML")
 
     try:
         async with download_sem:
             with contextlib.suppress(Exception):
-                await status.edit_text("⏳ Скачиваю…")
+                await status.edit_text(pe("⏳ Скачиваю…"), parse_mode="HTML")
             provider = switcher.choose()
             try:
                 media = await provider.get_media(url or text)
@@ -127,8 +127,6 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
                 last_audio_url[uid] = music
 
             if photos:
-                await message.answer(PHOTO_WARNING_TEXT, parse_mode="HTML", link_preview_options=LinkPreviewOptions(is_disabled=True))
-
                 cleanup_pending()
                 pending[uid] = {
                     "photos": photos,
@@ -142,7 +140,7 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
                     "src": url or text,
                 }
                 with contextlib.suppress(Exception):
-                    await status.edit_text("🖼️ Выбери фото по номерам или выдели страницу 👇", reply_markup=picker_kb(uid))
+                    await status.edit_text(pe("🖼️ Выбери фото по номерам или выдели страницу 👇"), parse_mode="HTML", reply_markup=picker_kb(uid))
                 return
 
             if not video:
@@ -179,7 +177,7 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
         reason = clamp_reason(e)
         store.inc_error("handler", e)
         with contextlib.suppress(Exception):
-            await status.edit_text("❌ Проблема с сетью/сервисом. Попробуй позже.")
+            await status.edit_text(pe("❌ Проблема с сетью/сервисом. Попробуй позже."), parse_mode="HTML")
 
         await log_event(
             message.bot,
@@ -200,7 +198,7 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
         # Видео слишком большое — тихая ошибка, не логируем в канал
         if "file too large" in low:
             with contextlib.suppress(Exception):
-                await status.edit_text("❌ Видео слишком большое для отправки через Telegram (лимит 60 МБ).")
+                await status.edit_text(pe("❌ Видео слишком большое для отправки через Telegram (лимит 60 МБ)."), parse_mode="HTML")
             return
 
         store.inc_error("handler", e)
@@ -214,7 +212,7 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
         elif "timeout" in low or "timed out" in low:
             msg = "❌ Сервер TikTok долго отвечает. Попробуй ещё раз через минуту."
         with contextlib.suppress(Exception):
-            await status.edit_text(msg)
+            await status.edit_text(pe(msg), parse_mode="HTML")
 
         await log_event(
             message.bot,

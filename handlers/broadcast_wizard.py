@@ -1,7 +1,9 @@
 """
 Пошаговый сценарий рассылки: /broadcast запускает wizard, который ловит
-следующие сообщения админа (текст, потом фото) и callback-кнопки (пропуск
-фото, закреп да/нет, отправить/отменить).
+следующие сообщения админа (текст, потом фото) и callback-кнопки.
+
+Поток: текст -> фото (или пропустить) -> итог с кнопками:
+  📌 (toggle закреп вкл/выкл прямо на итоговом экране) · 🚀 Разослать · ❌ Отменить
 
 ВАЖНО: в aiogram 3.x, если хендлер подошёл по фильтрам, апдейт считается
 обработанным и дальше НЕ передаётся. Поэтому здесь используется фильтр-функция
@@ -23,12 +25,12 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.utils.text_decorations import html_decoration
 
 from globals_state import dp
-from helpers import is_admin, html_escape
+from helpers import is_admin, html_escape, pe
 from storage import store
 from user_label import resolve_user_label
 from gates import gate_callback
 from admin_log_file import log_admin
-from keyboards import bcw_skip_photo_kb, bcw_pin_kb, bcw_preview_kb
+from keyboards import bcw_skip_photo_kb, bcw_result_kb
 from broadcast import broadcast_wizard, do_broadcast
 
 
@@ -75,15 +77,15 @@ async def broadcast_wizard_text(message: Message):
     st = broadcast_wizard[uid]
     raw = (message.text or "").strip()
     if not raw:
-        await message.answer("❌ Текст не может быть пустым. Пришлите текст рассылки ещё раз.")
+        await message.answer(pe("❌ Текст не может быть пустым. Пришлите текст рассылки ещё раз."), parse_mode="HTML")
         return
 
     st["text"] = _message_to_html(message)
     st["step"] = "photo"
 
     await message.answer(
-        "Шаг 2/3: пришлите фото для рассылки.\n"
-        "Если фото не нужно — нажмите «Пропустить».",
+        pe("Шаг 2/2: пришлите фото для рассылки.\nЕсли фото не нужно — нажмите «Пропустить»."),
+        parse_mode="HTML",
         reply_markup=bcw_skip_photo_kb(),
     )
 
@@ -95,15 +97,17 @@ async def broadcast_wizard_photo(message: Message):
 
     file_id = message.photo[-1].file_id
     st["photo"] = file_id
-    st["step"] = "pin"
+    st["step"] = "result"
 
-    await message.answer(
-        "Шаг 3/3: закреплять сообщение у пользователей?",
-        reply_markup=bcw_pin_kb(),
-    )
+    await _show_result(message, uid)
 
 
-async def _show_preview(message: Message, uid: int) -> None:
+async def _show_result(message: Message, uid: int) -> None:
+    """
+    Итоговый экран = ровно то, что увидят получатели (текст + фото, если есть),
+    плюс кнопки управления: 📌 закреп (toggle), 🚀 Разослать, ❌ Отменить.
+    Без какого-либо служебного текста поверх — только реальный контент рассылки.
+    """
     st = broadcast_wizard.get(uid)
     if not st:
         return
@@ -111,16 +115,10 @@ async def _show_preview(message: Message, uid: int) -> None:
     photo = st.get("photo")
     pin = bool(st.get("pin"))
 
-    # Превью = ровно то, что увидят получатели (плюс служебная информация снизу).
     if photo:
-        await message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=bcw_preview_kb())
+        await message.answer_photo(photo, caption=text, parse_mode="HTML", reply_markup=bcw_result_kb(pin))
     else:
-        await message.answer(text, parse_mode="HTML", reply_markup=bcw_preview_kb())
-
-    info = f"👥 Получателей: {_users_count()} · 📌 Закреп: {'да' if pin else 'нет'}"
-    if photo and len(text) > 1024:
-        info += "\n⚠️ Текст длиннее 1024 символов — фото уйдёт без подписи, текст отдельным сообщением."
-    await message.answer(info)
+        await message.answer(text, parse_mode="HTML", reply_markup=bcw_result_kb(pin))
 
 
 @dp.callback_query(F.data.startswith("bcw:"))
@@ -157,30 +155,25 @@ async def broadcast_wizard_cb(call: CallbackQuery):
             await call.answer()
             return
         st["photo"] = None
-        st["step"] = "pin"
+        st["step"] = "result"
         await call.answer()
         with contextlib.suppress(Exception):
             await call.message.delete()
-        await call.message.answer(
-            "Шаг 3/3: закреплять сообщение у пользователей?",
-            reply_markup=bcw_pin_kb(),
-        )
+        await _show_result(call.message, uid)
         return
 
-    if action in ("pin_yes", "pin_no"):
-        if st.get("step") != "pin":
+    if action == "toggle_pin":
+        if st.get("step") != "result":
             await call.answer()
             return
-        st["pin"] = action == "pin_yes"
-        st["step"] = "preview"
-        await call.answer()
+        st["pin"] = not bool(st.get("pin"))
+        await call.answer("📌 Закреп включён" if st["pin"] else "📌 Закреп выключен")
         with contextlib.suppress(Exception):
-            await call.message.delete()
-        await _show_preview(call.message, uid)
+            await call.message.edit_reply_markup(reply_markup=bcw_result_kb(bool(st["pin"])))
         return
 
     if action == "send":
-        if st.get("step") != "preview":
+        if st.get("step") != "result":
             await call.answer()
             return
         await call.answer("🚀 Запускаю рассылку…")

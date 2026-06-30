@@ -6,7 +6,7 @@ from aiogram.types import Message, LinkPreviewOptions
 
 from globals_state import dp
 from config import log
-from helpers import html_escape, is_admin, parse_stats_mode, parse_date_token
+from helpers import html_escape, is_admin, parse_stats_mode, parse_date_token, pe
 from storage import store
 from user_label import resolve_user_label
 from gates import gate_message
@@ -137,7 +137,7 @@ async def stats_cmd(message: Message):
             if not is_admin(uid):
                 if not await gate_message(message, label):
                     return
-                await message.answer(_user_stats_range_text(uid, d1, d2), parse_mode="HTML")
+                await message.answer(pe(_user_stats_range_text(uid, d1, d2)), parse_mode="HTML")
                 await log_event(
                     message.bot,
                     "userstats",
@@ -161,9 +161,9 @@ async def stats_cmd(message: Message):
         if len(parts) == 2:
             mode = parse_stats_mode(parts[1])
         if mode == "all":
-            await message.answer(_user_stats_text(uid), parse_mode="HTML")
+            await message.answer(pe(_user_stats_text(uid)), parse_mode="HTML")
         else:
-            await message.answer(_user_stats_period_text(uid, mode), parse_mode="HTML")
+            await message.answer(pe(_user_stats_period_text(uid, mode)), parse_mode="HTML")
         await log_event(
             message.bot,
             "userstats",
