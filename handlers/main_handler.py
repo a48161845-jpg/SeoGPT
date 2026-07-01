@@ -23,8 +23,6 @@ from config import (
     CAPTION_VIDEO,
 )
 from helpers import (
-    html_escape,
-    code,
     clamp_reason,
     extract_tiktok_url,
     normalize_tiktok_url,
@@ -36,13 +34,13 @@ from storage import store
 from user_label import resolve_user_label
 from gates import gate_message
 from limiters import lim, download_sem
-from logging_channel import log_event, format_user_for_log
 from strikes import add_download_strike
 from providers import TikWMClient, ProviderSwitcher
 from send_helpers import send_video_smart
 from picker_state import pending, cleanup_pending, last_audio_url, last_video_src, last_video_desc, picker_kb
 from keyboards import under_video_kb
 from donate import waiting_stars_amount, send_stars_invoice
+from logger import logger, Event, Stopwatch
 
 
 @dp.message(F.text)
@@ -100,12 +98,15 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
             return
 
     status = await message.answer(pe("⏳ Скачиваю…"), parse_mode="HTML")
+    sw = Stopwatch()
+    provider_name = ""
 
     try:
         async with download_sem:
             with contextlib.suppress(Exception):
                 await status.edit_text(pe("⏳ Скачиваю…"), parse_mode="HTML")
             provider = switcher.choose()
+            provider_name = type(provider).__name__
             try:
                 media = await provider.get_media(url or text)
             except Exception:
@@ -120,6 +121,7 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
                         raise
                 else:
                     raise
+            sw.lap("get_info")
 
             video, photos, music = media.video, media.photos, media.music
             description = media.description
@@ -141,6 +143,14 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
                 }
                 with contextlib.suppress(Exception):
                     await status.edit_text(pe("🖼️ Выбери фото по номерам или выдели страницу 👇"), parse_mode="HTML", reply_markup=picker_kb(uid))
+                logger.log(
+                    Event.DOWNLOAD,
+                    "Фото-альбом найден",
+                    status="SUCCESS",
+                    user={"id": uid, "username": label if label.startswith("@") else None},
+                    content={"type": "photo_album", "provider": provider_name, "source": url or text},
+                    performance=sw.as_dict(),
+                )
                 return
 
             if not video:
@@ -160,35 +170,33 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
                 status_msg=status,
                 reply_markup=under_video_kb(has_music=bool(music), has_desc=bool(description)),
             )
+            sw.lap("download_and_send")
             store.inc_download(uid, "video", items=1)
             with contextlib.suppress(Exception):
                 await status.delete()
-            await log_event(
-                message.bot,
-                "videodl",
-                [
-                    "🎬 Категория: <b>Скачивание видео</b>",
-                    f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                    f"🔗 Ссылка: {code(url or text)}",
-                ],
+
+            logger.log(
+                Event.DOWNLOAD,
+                "Видео скачано",
+                status="SUCCESS",
+                user={"id": uid, "username": label if label.startswith("@") else None},
+                content={"type": "video", "provider": provider_name, "source": url or text},
+                performance=sw.as_dict(),
             )
 
     except aiohttp.ClientError as e:
-        reason = clamp_reason(e)
         store.inc_error("handler", e)
         with contextlib.suppress(Exception):
             await status.edit_text(pe("❌ Проблема с сетью/сервисом. Попробуй позже."), parse_mode="HTML")
 
-        await log_event(
-            message.bot,
-            "dlerr",
-            [
-                "❌ Категория: <b>Ошибка скачивания</b>",
-                f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                f"🧩 Стадия: <b>handler</b>",
-                f"🔗 Ссылка: {code(text)}",
-                f"🧨 Причина: <b>{html_escape(reason)}</b>",
-            ],
+        logger.log_exception(
+            e,
+            module="handlers.main_handler",
+            user={"id": uid, "username": label if label.startswith("@") else None},
+            provider=provider_name,
+            url=url or text,
+            duration_ms=sw.total_ms(),
+            title="Сетевая ошибка при скачивании",
         )
 
     except Exception as e:
@@ -214,14 +222,12 @@ async def main_handler(message: Message, client: TikWMClient, switcher: Provider
         with contextlib.suppress(Exception):
             await status.edit_text(pe(msg), parse_mode="HTML")
 
-        await log_event(
-            message.bot,
-            "dlerr",
-            [
-                "❌ Категория: <b>Ошибка скачивания</b>",
-                f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                f"🧩 Стадия: <b>handler</b>",
-                f"🔗 Ссылка: {code(text)}",
-                f"🧨 Причина: <b>{html_escape(reason)}</b>",
-            ],
+        logger.log_exception(
+            e,
+            module="handlers.main_handler",
+            user={"id": uid, "username": label if label.startswith("@") else None},
+            provider=provider_name,
+            url=url or text,
+            duration_ms=sw.total_ms(),
+            title="Ошибка при скачивании",
         )

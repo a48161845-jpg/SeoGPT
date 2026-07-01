@@ -180,11 +180,18 @@ async def broadcast_wizard_cb(call: CallbackQuery):
         text = st.get("text") or ""
         photo = st.get("photo")
         pin = bool(st.get("pin"))
+        chat_id = call.message.chat.id if call.message else uid
         broadcast_wizard.pop(uid, None)
         with contextlib.suppress(Exception):
             await call.message.delete()
         log_admin(uid, "broadcast_wizard_send", f"photo={bool(photo)} pin={pin}")
-        await do_broadcast(call.message, uid, label, text, already_html=True, photo=photo, pin=pin)
+        # Создаём фейковое сообщение для do_broadcast через send_message
+        status = await call.bot.send_message(
+            chat_id,
+            pe("📣 <b>Рассылка запускается…</b>"),
+            parse_mode="HTML",
+        )
+        await do_broadcast(status, uid, label, text, already_html=True, photo=photo, pin=pin)
         return
 
     await call.answer()

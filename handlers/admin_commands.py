@@ -51,7 +51,7 @@ async def ban_cmd(message: Message):
 
     # Нельзя банить админов
     if is_admin(uid):
-        await message.answer("❌ Нельзя банить администратора.", parse_mode="HTML")
+        await message.answer(pe("❌ Нельзя банить администратора."), parse_mode="HTML")
         return
 
     existing = store.get_ban(uid)
@@ -74,7 +74,7 @@ async def ban_cmd(message: Message):
     try:
         seconds = parse_duration(dur_raw)
     except ValueError:
-        await message.answer("❌ Неверное время. Пример: 2h, 30m, 1d12h", parse_mode="HTML")
+        await message.answer(pe("❌ Неверное время. Пример: 2h, 30m, 1d12h"), parse_mode="HTML")
         return
 
     until = int(time.time()) + seconds
@@ -178,7 +178,7 @@ async def banlist_cmd(message: Message):
             f"• <b>{format_user_for_log(who_label, uid2)}</b> - до <b>{format_msk(until)} МСК</b>\n"
             f"  Причина: <i>{html_escape(reason)}</i>\n\n"
         )
-    await message.answer("".join(lines), parse_mode="HTML")
+    await message.answer(pe("".join(lines)), parse_mode="HTML")
 
 
 @dp.message(Command("baninfo"))
@@ -266,7 +266,7 @@ async def info_cmd(message: Message):
                     found_uid = int(uid_str)
                     break
             if found_uid is None:
-                await message.answer("❌ Пользователь не найден. Проверь ID или username.", parse_mode="HTML")
+                await message.answer(pe("❌ Пользователь не найден. Проверь ID или username."), parse_mode="HTML")
                 return
             uid = found_uid
     who_label = await resolve_user_label(message.bot, uid)
@@ -539,7 +539,7 @@ async def admindel_cmd(message: Message):
 
     uid = int(parts[1].strip())
     if uid in ADMINS:
-        await message.answer("❌ Нельзя удалить суперадмина (прописан в config).", parse_mode="HTML")
+        await message.answer(pe("❌ Нельзя удалить суперадмина (прописан в config)."), parse_mode="HTML")
         return
 
     target_label = store.get_user_label(uid)
@@ -578,21 +578,29 @@ async def adminlist_cmd(message: Message):
         return
 
     from config import ADMINS
-    lines = ["👑 <b>Список администраторов</b>\n"]
-
-    lines.append("🔒 <b>Суперадмины (config):</b>")
+    # Пункт 11: [5807868868886009920] для заголовка, [5778570255555105942] для суперадминов, [6039496266180726678] для дополнительных
+    lines = [
+        '<tg-emoji emoji-id="5807868868886009920">🔌</tg-emoji> <b>Администраторы</b>',
+        "━━━━━━━━━━━━━━━━━━━━",
+        "",
+        '<tg-emoji emoji-id="5778570255555105942">🔒</tg-emoji> <b>Суперадмины:</b>',
+    ]
     for uid2 in sorted(ADMINS):
         lbl = store.get_user_label(uid2)
-        lines.append(f"  • <b>{format_user_for_log(lbl, uid2)}</b>")
+        lines.append(f"  └ {format_user_for_log(lbl, uid2)}")
 
     extra = store.get_extra_admins()
-    lines.append(f"\n➕ <b>Дополнительные ({len(extra)}):</b>")
+    lines.append("")
+    lines.append(f'<tg-emoji emoji-id="6039496266180726678">➕</tg-emoji> <b>Дополнительные ({len(extra)}):</b>')
     if extra:
         for uid2 in sorted(extra):
             lbl = store.get_user_label(uid2)
-            lines.append(f"  • <b>{format_user_for_log(lbl, uid2)}</b>")
+            lines.append(f"  └ {format_user_for_log(lbl, uid2)}")
     else:
         lines.append("  <i>нет</i>")
+
+    lines.append("")
+    lines.append(f"Управление: {code('/adminadd ID')} · {code('/admindel ID')}")
 
     log_admin(admin_id, "adminlist", f"extra_count={len(extra)}")
     await log_admin_action_to_channel(
