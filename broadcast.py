@@ -11,10 +11,11 @@ from aiogram.types import Message, LinkPreviewOptions
 from aiogram.exceptions import TelegramBadRequest
 
 from config import BROADCAST_MAX_USERS, BROADCAST_DELAY_SEC, log
-from helpers import html_escape, msk_now, to_html_simple
+from helpers import html_escape, msk_now, to_html_simple, pe
 from storage import store
 from admin_log_file import log_admin
 from logging_channel import log_event, format_user_for_log
+from logger import logger, Event
 from keyboards import broadcast_cancel_kb
 
 # ================== STATE ==================
@@ -67,10 +68,10 @@ async def do_broadcast(
 ) -> None:
     users = list(store.data.get("users", []))
     if not users:
-        await message.answer("Пока нет пользователей для рассылки.", parse_mode="HTML")
+        await message.answer(pe("Пока нет пользователей для рассылки."), parse_mode="HTML")
         return
     if len(users) > BROADCAST_MAX_USERS:
-        await message.answer(f"⚠️ Слишком много пользователей ({len(users)}). Лимит: {BROADCAST_MAX_USERS}.", parse_mode="HTML")
+        await message.answer(pe(f"⚠️ Слишком много пользователей ({len(users)}). Лимит: {BROADCAST_MAX_USERS}."), parse_mode="HTML")
         return
 
     # Без конвертации Markdown-подобной разметки — текст уходит как есть,
@@ -78,22 +79,23 @@ async def do_broadcast(
     html = raw_text if already_html else html_escape(raw_text)
 
     log_admin(admin_id, "broadcast", f"len={len(raw_text)} users={len(users)} photo={bool(photo)} pin={pin}")
-    await log_event(
-        message.bot,
-        "broadcast",
-        [
-            "📣 Категория: <b>Рассылка</b>",
-            "🚀 Старт",
-            f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-            f"👥 Получателей: <b>{len(users)}</b>",
-            f"🖼 С фото: <b>{'да' if photo else 'нет'}</b>",
-            f"📌 Закреп: <b>{'да' if pin else 'нет'}</b>",
-        ],
+    logger.log(
+        Event.BROADCAST,
+        "Рассылка запущена",
+        status="PENDING",
+        user={"id": admin_id},
+        extra={
+            "Кто": format_user_for_log(admin_label, admin_id),
+            "Получателей": len(users),
+            "Фото": "да" if photo else "нет",
+            "Закреп": "да" if pin else "нет",
+        },
+        force_telegram=True,
     )
 
     pending_admin_broadcast_cancel[admin_id] = False
     status = await message.answer(
-        f"📣 Запускаю рассылку…\nПолучателей: {len(users)}",
+        pe(f"📣 Запускаю рассылку…\nПолучателей: {len(users)}"),
         parse_mode="HTML",
         reply_markup=broadcast_cancel_kb(),
     )
@@ -136,34 +138,39 @@ async def do_broadcast(
     }
 
     if pending_admin_broadcast_cancel.get(admin_id):
-        await status.edit_text(f"⛔ Рассылка остановлена: {sent}/{len(users)}", parse_mode="HTML")
-        await log_event(
-            message.bot,
-            "broadcast",
-            [
-                "📣 Категория: <b>Рассылка</b>",
-                "⛔ Остановлена",
-                f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-                f"✅ Отправлено: <b>{sent}/{len(users)}</b>",
-            ],
+        await status.edit_text(pe(f"⛔ Рассылка остановлена: {sent}/{len(users)}"), parse_mode="HTML")
+        logger.log(
+            Event.BROADCAST,
+            "Рассылка остановлена",
+            status="WARNING",
+            user={"id": admin_id},
+            extra={
+                "Кто": format_user_for_log(admin_label, admin_id),
+                "Отправлено": f"{sent}/{len(users)}",
+            },
+            force_telegram=True,
         )
         pending_admin_broadcast_cancel.pop(admin_id, None)
         return
 
     await status.edit_text(
-        f"✅ Рассылка завершена: {sent}/{len(users)}\n\n"
-        f"Удалить рассылку: {('/undo_broadcast')}",
+        pe(
+            f"✅ Рассылка завершена: {sent}/{len(users)}\n\n"
+            f"Удалить рассылку: /undo_broadcast"
+        ),
         parse_mode="HTML",
     )
-    await log_event(
-        message.bot,
-        "broadcast",
-        [
-            "📣 Категория: <b>Рассылка</b>",
-            "🏁 Завершена",
-            f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-            f"✅ Отправлено: <b>{sent}/{len(users)}</b>",
-        ],
+    logger.log(
+        Event.BROADCAST,
+        "Рассылка завершена",
+        status="SUCCESS",
+        user={"id": admin_id},
+        extra={
+            "Кто": format_user_for_log(admin_label, admin_id),
+            "Отправлено": f"{sent}/{len(users)}",
+            "Закреплено": len(pinned_messages),
+        },
+        force_telegram=True,
     )
     pending_admin_broadcast_cancel.pop(admin_id, None)
 
@@ -190,39 +197,16 @@ async def undo_last_broadcast(admin_id: int, bot: Bot) -> int:
 async def do_broadcast_system(bot: Bot, kind: str, raw_text: str) -> None:
     users = list(store.data.get("users", []))
     if not users:
-        await log_event(
-            bot,
-            "broadcast",
-            [
-                "📣 Категория: <b>Авто-рассылка</b>",
-                f"🧩 Тип: <b>{html_escape(kind)}</b>",
-                "ℹ️ Пользователей нет",
-            ],
-        )
+        logger.log(Event.BROADCAST, f"Авто-рассылка ({kind}): нет пользователей", status="SKIPPED", force_telegram=True)
         return
     if len(users) > BROADCAST_MAX_USERS:
-        await log_event(
-            bot,
-            "broadcast",
-            [
-                "📣 Категория: <b>Авто-рассылка</b>",
-                f"🧩 Тип: <b>{html_escape(kind)}</b>",
-                f"⚠️ Слишком много пользователей: <b>{len(users)}</b>",
-            ],
-        )
+        logger.log(Event.BROADCAST, f"Авто-рассылка ({kind}): слишком много пользователей", status="WARNING",
+                   extra={"Пользователей": len(users)}, force_telegram=True)
         return
 
     html = to_html_simple(raw_text)
-    await log_event(
-        bot,
-        "broadcast",
-        [
-            "📣 Категория: <b>Авто-рассылка</b>",
-            f"🧩 Тип: <b>{html_escape(kind)}</b>",
-            f"👥 Получателей: <b>{len(users)}</b>",
-            "🚀 Старт",
-        ],
-    )
+    logger.log(Event.BROADCAST, f"Авто-рассылка ({kind}) запущена", status="PENDING",
+               extra={"Получателей": len(users)}, force_telegram=True)
 
     sent = 0
     for u in users:
@@ -233,16 +217,8 @@ async def do_broadcast_system(bot: Bot, kind: str, raw_text: str) -> None:
             pass
         await asyncio.sleep(BROADCAST_DELAY_SEC)
 
-    await log_event(
-        bot,
-        "broadcast",
-        [
-            "📣 Категория: <b>Авто-рассылка</b>",
-            f"🧩 Тип: <b>{html_escape(kind)}</b>",
-            f"✅ Отправлено: <b>{sent}/{len(users)}</b>",
-            "🏁 Завершена",
-        ],
-    )
+    logger.log(Event.BROADCAST, f"Авто-рассылка ({kind}) завершена", status="SUCCESS",
+               extra={"Отправлено": f"{sent}/{len(users)}"}, force_telegram=True)
 
 
 def _broadcast_state() -> Dict[str, str]:

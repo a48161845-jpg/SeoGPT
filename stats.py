@@ -219,13 +219,16 @@ def _user_stats_range_text(uid: int, start_dt: datetime, end_dt: datetime) -> st
 
     return (
         "📊 <b>Твоя статистика (диапазон)</b>\n"
-        f"<i>{start_dt.strftime('%d.%m.%Y')} - {end_dt.strftime('%d.%m.%Y')}</i>\n\n"
-        f"👤 ID: <b>{uid}</b>\n"
-        f"🕒 Первый визит: <b>{joined}</b>\n\n"
-        f"🎬 Видео скачано: <b>{v_ops}</b> операций (файлов: <b>{v_sent}</b>)\n"
-        f"🖼️ Фото скачано: <b>{p_ops}</b> операций (фото: <b>{p_sent}</b>)\n"
-        f"🎵 Музыка скачано: <b>{a_sent}</b>\n"
-        f"⭐ Stars пожертвовано: <b>{stars}</b>\n"
+        f"<i>{start_dt.strftime('%d.%m.%Y')} — {end_dt.strftime('%d.%m.%Y')}</i>\n\n"
+        f"🆔 ID: <a href=\"tg://user?id={uid}\"><code>{uid}</code></a>\n"
+        f"🗓 Первый визит: <b>{joined}</b>\n\n"
+        "━━━━━━━━━━━━━━━\n\n"
+        "📥 <b>Скачивания</b>\n\n"
+        f"🎬 Видео\n└ {v_sent} файлов\n\n"
+        f"🖼 Фото\n└ {p_sent} файлов\n\n"
+        f"🎵 Музыка\n└ {a_sent} треков\n\n"
+        "━━━━━━━━━━━━━━━\n\n"
+        f"⭐ Пожертвовано: <b>{stars} Stars</b>\n"
     )
 
 def _admin_stats_text(mode: str) -> str:
@@ -472,7 +475,7 @@ def _user_stats_text(uid: int) -> str:
     return (
         "📊 <b>Твоя статистика</b>\n\n"
         "👤 <b>Профиль</b>\n\n"
-        f"🆔 ID: <b>{uid}</b>\n"
+        f"🆔 ID: <a href=\"tg://user?id={uid}\"><code>{uid}</code></a>\n"
         f"🗓 Первый визит\n└ {joined}\n\n"
         "━━━━━━━━━━━━━━━\n\n"
         "📥 <b>Всего скачано</b>\n\n"

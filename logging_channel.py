@@ -145,12 +145,20 @@ async def log_event(bot: Bot, category: str, lines: List[str]) -> None:
     await send_channel_log(bot, pe(full_text))
 
 async def log_admin_action_to_channel(bot: Bot, title: str, lines: List[str]) -> None:
-    await log_event(
-        bot,
-        "admin",
-        [
-            "👑 Категория: <b>Админ-действие</b>",
-            f"🧩 Действие: <b>{html_escape(title)}</b>",
-            *lines,
-        ],
-    )
+    """
+    Совместимый шим: старый интерфейс (bot, title, lines[]) теперь
+    маршрутизируется через новый единый Logger (событие ADMIN).
+    lines обычно содержат пары вида "👤 Кто: <b>...</b>" — парсим их
+    в extra-словарь для единообразного оформления через build_message().
+    """
+    from logger import logger, Event
+    extra: Dict[str, str] = {}
+    for line in lines:
+        # Грубый парсинг "Метка: значение" из готовых HTML-строк старого формата
+        plain = re.sub(r"<[^>]+>", "", line)
+        if ":" in plain:
+            k, _, v = plain.partition(":")
+            extra[k.strip()] = v.strip()
+        else:
+            extra[plain.strip()] = ""
+    logger.log(Event.ADMIN, title, status="SUCCESS", extra=extra or None, force_telegram=True)

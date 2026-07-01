@@ -18,7 +18,7 @@ from aiogram import Bot
 from config import API_URL, APIFY_TOKEN, API_ERROR_WINDOW_SEC, API_ERROR_THRESHOLD, API_FALLBACK_COOLDOWN_SEC
 from helpers import html_escape, code, clamp_reason, ms_since
 from storage import store
-from logging_channel import log_event
+from logger import logger, Event
 
 
 class _FileTooLargeError(Exception):
@@ -58,26 +58,22 @@ class TikWMClient(BaseProvider):
         self.bot = bot
 
     async def _log_dlerr(self, stage: str, src: str, attempt: int, dur_ms: int, err: Exception) -> None:
-        # stats error counter
+        # stats error counter (старая система, оставлена для совместимости статистики /stats)
         try:
             store.inc_error(stage, err)
         except Exception:
             pass
 
-        if not self.bot:
-            return
-        reason = clamp_reason(err)
-        await log_event(
-            self.bot,
-            "dlerr",
-            [
-                "❌ Категория: <b>Ошибка скачивания</b>",
-                f"🧩 Стадия: <b>{html_escape(stage)}</b>",
-                f"⏱️ Время: <b>{dur_ms} мс</b>",
-                f"🔗 Ссылка: {code(src)}",
-                f"🧨 Причина: <b>{html_escape(reason)}</b>",
-            ],
-        )
+        with contextlib.suppress(Exception):
+            logger.log_exception(
+                err,
+                module=f"providers.{type(self).__name__}",
+                provider=type(self).__name__,
+                url=src,
+                attempt=attempt,
+                duration_ms=dur_ms,
+                title=f"Ошибка скачивания ({stage})",
+            )
 
     @staticmethod
     def _media_from_data(data: Dict[str, Any]) -> MediaInfo:
@@ -273,11 +269,11 @@ class ProviderSwitcher:
         return self.primary
 
     async def log_switch(self, using: str) -> None:
-        await log_event(
-            self.bot,
-            "dlerr",
-            [
-                "🔁 Категория: <b>Переключение провайдера</b>",
-                f"📡 Активный: <b>{html_escape(using)}</b>",
-            ],
+        logger.log(
+            Event.PROVIDER,
+            "Переключение провайдера",
+            status="WARNING",
+            content={"provider": using},
+            note=f"Активный провайдер изменён на {using} из-за серии ошибок основного.",
+            force_telegram=True,
         )
