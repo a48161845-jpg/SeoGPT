@@ -10,7 +10,8 @@ from helpers import html_escape, is_admin, parse_stats_mode, parse_date_token, p
 from storage import store
 from user_label import resolve_user_label
 from gates import gate_message
-from logging_channel import log_event, log_admin_action_to_channel, format_user_for_log
+from logging_channel import format_user_for_log
+from logger import logger, Event
 from admin_log_file import log_admin
 from keyboards import (
     START_TEXT,
@@ -41,13 +42,12 @@ async def start_cmd(message: Message):
 
     is_new = store.register(uid)
     if is_new:
-        await log_event(
-            message.bot,
-            "user",
-            [
-                "👋 Категория: <b>Приход пользователя</b>",
-                f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-            ],
+        logger.log(
+            Event.USER,
+            "Новый пользователь",
+            status="SUCCESS",
+            user={"id": uid, "username": label if label.startswith("@") else None},
+            force_telegram=True,
         )
 
     if not await gate_message(message, label):
@@ -75,13 +75,11 @@ async def support_cmd(message: Message):
     if not await gate_message(message, label):
         return
     await message.answer(SUPPORT_TEXT, parse_mode="HTML", link_preview_options=LinkPreviewOptions(is_disabled=True))
-    await log_event(
-        message.bot,
-        "support",
-        [
-            "🆘 Категория: <b>Открыта поддержка</b>",
-            f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-        ],
+    logger.log(
+        Event.USER,
+        "Открыта поддержка",
+        user={"id": uid, "username": label if label.startswith("@") else None},
+        skip_telegram=True,
     )
 
 
@@ -93,13 +91,11 @@ async def donate_cmd(message: Message):
     if not await gate_message(message, label):
         return
     await message.answer(DONATE_TEXT, parse_mode="HTML", reply_markup=donate_main_kb(), link_preview_options=LinkPreviewOptions(is_disabled=True))
-    await log_event(
-        message.bot,
-        "donate_open",
-        [
-            "💛 Категория: <b>Открыт донат</b>",
-            f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-        ],
+    logger.log(
+        Event.DONATE,
+        "Открыт донат",
+        user={"id": uid, "username": label if label.startswith("@") else None},
+        skip_telegram=True,
     )
 
 
@@ -115,11 +111,7 @@ async def admin_cmd(message: Message):
         return
 
     log_admin(uid, "open_admin_panel")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Открыл админ-панель",
-        [f"👤 Кто: <b>{format_user_for_log(label, uid)}</b>"],
-    )
+    logger.log(Event.ADMIN, "Открыта админ-панель", user={"id": uid}, skip_telegram=True)
     await message.answer(ADMIN_MENU_TEXT, parse_mode="HTML", reply_markup=admin_menu_kb())
 
 
@@ -138,15 +130,8 @@ async def stats_cmd(message: Message):
                 if not await gate_message(message, label):
                     return
                 await message.answer(pe(_user_stats_range_text(uid, d1, d2)), parse_mode="HTML")
-                await log_event(
-                    message.bot,
-                    "userstats",
-                    [
-                        "📊 Категория: <b>Статистика пользователя (диапазон)</b>",
-                        f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                        f"🧾 Период: <b>{d1.strftime('%d.%m.%Y')} - {d2.strftime('%d.%m.%Y')}</b>",
-                    ],
-                )
+                logger.log(Event.USER, "Запрошена статистика (диапазон)",
+                    user={"id": uid}, skip_telegram=True)
                 return
             if not await gate_message(message, label):
                 return
@@ -164,15 +149,8 @@ async def stats_cmd(message: Message):
             await message.answer(pe(_user_stats_text(uid)), parse_mode="HTML")
         else:
             await message.answer(pe(_user_stats_period_text(uid, mode)), parse_mode="HTML")
-        await log_event(
-            message.bot,
-            "userstats",
-            [
-                "📊 Категория: <b>Статистика пользователя</b>",
-                f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                f"🧾 Режим: <b>{html_escape(mode)}</b>",
-            ],
-        )
+        logger.log(Event.USER, "Запрошена статистика",
+            user={"id": uid}, extra={"Режим": mode}, skip_telegram=True)
         return
     if not await gate_message(message, label):
         return

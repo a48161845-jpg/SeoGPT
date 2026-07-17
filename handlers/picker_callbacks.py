@@ -14,7 +14,8 @@ from helpers import code, is_admin, pe
 from storage import store
 from user_label import resolve_user_label
 from limiters import lim
-from logging_channel import log_event, format_user_for_log
+from logging_channel import format_user_for_log
+from logger import logger, Event
 from strikes import add_download_strike
 from send_helpers import send_photos, send_music_if_any, send_description, send_video_smart
 from picker_state import pending, cleanup_pending, picker_kb
@@ -145,14 +146,11 @@ async def picker_cb(call: CallbackQuery):
         if globals_state.g_provider:
             await send_video_smart(call.message, globals_state.g_provider, video_url, CAPTION_VIDEO)
             store.inc_download(uid, "video", items=1)
-            await log_event(
-                call.bot,
-                "videodl",
-                [
-                    "🤳 Категория: <b>Фото-слайдшоу как видео</b>",
-                    f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                    f"🔗 Ссылка: {code(src)}",
-                ],
+            logger.log(
+                Event.DOWNLOAD, "Фото-слайдшоу как видео",
+                status="SUCCESS",
+                user={"id": uid, "username": label if label.startswith("@") else None},
+                content={"type": "photo_video", "source": src},
             )
         chat_id = call.message.chat.id if call.message else uid
         await call.bot.send_message(chat_id, pe("👇"), parse_mode="HTML", reply_markup=post_download_kb())
@@ -205,25 +203,19 @@ async def picker_cb(call: CallbackQuery):
         if st.get("music") and globals_state.g_provider:
             await send_music_if_any(call.message, globals_state.g_provider, st.get("music"), uid=uid, label=label, src=st.get("src"))
 
-        await log_event(
-            call.bot,
-            "photodl",
-            [
-                "🖼️ Категория: <b>Скачивание фото (всё)</b>",
-                f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                f"🔗 Ссылка: {code(src)}",
-                f"📦 Кол-во фото: <b>{cnt}</b>",
-            ],
+        logger.log(
+            Event.DOWNLOAD, "Фото скачаны (все)",
+            status="SUCCESS",
+            user={"id": uid, "username": label if label.startswith("@") else None},
+            content={"type": "photo", "source": src},
+            extra={"Кол-во": cnt},
         )
         if desc_sent:
-            await log_event(
-                call.bot,
-                "descdl",
-                [
-                    "📑 Категория: <b>Скачивание описания (фото)</b>",
-                    f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                    f"🔗 Ссылка: {code(src)}",
-                ],
+            logger.log(
+                Event.DOWNLOAD, "Описание скачано (фото)",
+                status="SUCCESS",
+                user={"id": uid, "username": label if label.startswith("@") else None},
+                content={"type": "description", "source": src},
             )
         chat_id = call.message.chat.id if call.message else uid
         await call.bot.send_message(chat_id, pe("👇"), parse_mode="HTML", reply_markup=post_download_kb())
@@ -260,25 +252,19 @@ async def picker_cb(call: CallbackQuery):
         if st.get("music_selected") and st.get("music") and globals_state.g_provider:
             await send_music_if_any(call.message, globals_state.g_provider, st.get("music"), uid=uid, label=label, src=st.get("src"))
 
-        await log_event(
-            call.bot,
-            "photodl",
-            [
-                "🖼️ Категория: <b>Скачивание фото (выбор)</b>",
-                f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                f"🔗 Ссылка: {code(src)}",
-                f"📦 Кол-во фото: <b>{cnt}</b>",
-            ],
+        logger.log(
+            Event.DOWNLOAD, "Фото скачаны (выбор)",
+            status="SUCCESS",
+            user={"id": uid, "username": label if label.startswith("@") else None},
+            content={"type": "photo", "source": src},
+            extra={"Кол-во": cnt},
         )
         if desc_sent:
-            await log_event(
-                call.bot,
-                "descdl",
-                [
-                    "📑 Категория: <b>Скачивание описания (фото)</b>",
-                    f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                    f"🔗 Ссылка: {code(src)}",
-                ],
+            logger.log(
+                Event.DOWNLOAD, "Описание скачано (фото)",
+                status="SUCCESS",
+                user={"id": uid, "username": label if label.startswith("@") else None},
+                content={"type": "description", "source": src},
             )
         chat_id = call.message.chat.id if call.message else uid
         await call.bot.send_message(chat_id, pe("👇"), parse_mode="HTML", reply_markup=post_download_kb())

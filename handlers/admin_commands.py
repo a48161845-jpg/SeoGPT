@@ -12,7 +12,8 @@ from helpers import html_escape, code, is_admin, parse_duration, format_msk
 from storage import store
 from user_label import resolve_user_label
 from gates import gate_message
-from logging_channel import log_event, log_admin_action_to_channel, format_user_for_log
+from logging_channel import format_user_for_log
+from logger import logger, Event
 from admin_log_file import log_admin
 from keyboards import admin_broadcast_confirm_kb
 from broadcast import (
@@ -85,16 +86,16 @@ async def ban_cmd(message: Message):
     store.inc_ban()
     log_admin(admin_id, "ban", f"target={uid} until={until} reason={reason}")
 
-    await log_event(
-        message.bot,
-        "userban",
-        [
-            "🚫 Категория: <b>Блокировка (ручная)</b>",
-            f"🙅‍♂️ Кого: <b>{format_user_for_log(target_label, uid)}</b>",
-            f"👑 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-            f"⏳ До: <b>{format_msk(until)} МСК</b>",
-            f"📌 Причина: <b>{html_escape(reason)}</b>",
-        ],
+    logger.log(
+        Event.SECURITY, "Ручной бан",
+        status="FAIL",
+        user={"id": uid, "username": target_label if target_label.startswith("@") else None},
+        extra={
+            "Кто": format_user_for_log(admin_label, admin_id),
+            "До": format_msk(until) + " МСК",
+            "Причина": reason,
+        },
+        force_telegram=True,
     )
 
     await message.answer(
@@ -132,15 +133,15 @@ async def unban_cmd(message: Message):
 
     log_admin(admin_id, "unban", f"target={uid} existed={existed}")
 
-    await log_event(
-        message.bot,
-        "userunban",
-        [
-            "✅ Категория: <b>Разблокировка</b>",
-            f"🙋‍♂️ Кого: <b>{format_user_for_log(target_label, uid)}</b>",
-            f"👑 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-            f"📍 Был в бане: <b>{'да' if existed else 'нет'}</b>",
-        ],
+    logger.log(
+        Event.SECURITY, "Разбан",
+        status="SUCCESS",
+        user={"id": uid, "username": target_label if target_label.startswith("@") else None},
+        extra={
+            "Кто": format_user_for_log(admin_label, admin_id),
+            "Был в бане": "да" if existed else "нет",
+        },
+        force_telegram=True,
     )
     if existed:
         await message.answer(pe(f"✅ Разбан: <b>{format_user_for_log(target_label, uid)}</b>"), parse_mode="HTML")
@@ -161,10 +162,11 @@ async def banlist_cmd(message: Message):
 
     bans = store.list_bans()
     log_admin(admin_id, "banlist", f"count={len(bans)}")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Просмотр бан-листа",
-        [f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>", f"🚫 Кол-во: <b>{len(bans)}</b>"],
+    logger.log(
+        Event.ADMIN, "Просмотр бан-листа",
+        status="SUCCESS",
+        user={"id": admin_id},
+        force_telegram=True,
     )
 
     if not bans:
@@ -203,13 +205,11 @@ async def baninfo_cmd(message: Message):
     store.set_user_label(uid, who_label)
 
     log_admin(admin_id, "baninfo", f"target={uid} banned={'yes' if ban else 'no'}")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Просмотр бана",
-        [
-            f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-            f"🙋‍♂️ Кого: <b>{format_user_for_log(who_label, uid)}</b>",
-        ],
+    logger.log(
+        Event.ADMIN, "Просмотр бана",
+        status="SUCCESS",
+        user={"id": admin_id},
+        force_telegram=True,
     )
 
     if not ban:
@@ -360,13 +360,11 @@ async def undo_broadcast_cmd(message: Message):
         await status.edit_text(pe("❌ Нет данных о последней рассылке (или бот был перезапущен)."), parse_mode="HTML")
         return
     log_admin(admin_id, "undo_broadcast", f"removed={removed}")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Удалена рассылка",
-        [
-            f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-            f"🗑 Удалено сообщений: <b>{removed}</b>",
-        ],
+    logger.log(
+        Event.ADMIN, "Удалена рассылка",
+        status="SUCCESS",
+        user={"id": admin_id},
+        force_telegram=True,
     )
     await status.edit_text(pe(f"✅ Рассылка удалена у {removed} пользователей."), parse_mode="HTML")
 
@@ -458,10 +456,11 @@ async def dbfile_cmd(message: Message):
 
     from db_report import send_db_json
     log_admin(admin_id, "dbfile", "manual db dump requested")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Запрошен дамп БД",
-        [f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>"],
+    logger.log(
+        Event.ADMIN, "Запрошен дамп БД",
+        status="SUCCESS",
+        user={"id": admin_id},
+        force_telegram=True,
     )
     await message.answer(pe("🗄 Формирую дамп БД…"), parse_mode="HTML")
     await send_db_json(message.bot, admin_id)
@@ -497,14 +496,12 @@ async def adminadd_cmd(message: Message):
     log_admin(admin_id, "adminadd", f"target={uid} success={added}")
 
     if added:
-        await log_admin_action_to_channel(
-            message.bot,
-            "Добавление администратора",
-            [
-                f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-                f"👑 Новый адм: <b>{format_user_for_log(target_label, uid)}</b>",
-            ],
-        )
+        logger.log(
+        Event.ADMIN, "Добавление администратора",
+        status="SUCCESS",
+        user={"id": admin_id},
+        force_telegram=True,
+    )
         await message.answer(
             pe(f"✅ Администратор добавлен: <b>{format_user_for_log(target_label, uid)}</b>"),
             parse_mode="HTML",
@@ -547,14 +544,12 @@ async def admindel_cmd(message: Message):
     log_admin(admin_id, "admindel", f"target={uid} success={removed}")
 
     if removed:
-        await log_admin_action_to_channel(
-            message.bot,
-            "Удаление администратора",
-            [
-                f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-                f"🚫 Удалён адм: <b>{format_user_for_log(target_label, uid)}</b>",
-            ],
-        )
+        logger.log(
+        Event.ADMIN, "Удаление администратора",
+        status="SUCCESS",
+        user={"id": admin_id},
+        force_telegram=True,
+    )
         await message.answer(
             pe(f"✅ Администратор удалён: <b>{format_user_for_log(target_label, uid)}</b>"),
             parse_mode="HTML",
@@ -603,12 +598,10 @@ async def adminlist_cmd(message: Message):
     lines.append(f"Управление: {code('/adminadd ID')} · {code('/admindel ID')}")
 
     log_admin(admin_id, "adminlist", f"extra_count={len(extra)}")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Просмотр списка администраторов",
-        [
-            f"👤 Кто: <b>{format_user_for_log(admin_label, admin_id)}</b>",
-            f"➕ Доп. админов: <b>{len(extra)}</b>",
-        ],
+    logger.log(
+        Event.ADMIN, "Просмотр списка администраторов",
+        status="SUCCESS",
+        user={"id": admin_id},
+        force_telegram=True,
     )
     await message.answer("\n".join(lines), parse_mode="HTML")

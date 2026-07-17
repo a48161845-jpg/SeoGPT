@@ -18,7 +18,8 @@ from helpers import code
 from storage import store
 from user_label import resolve_user_label
 from gates import gate_callback, gate_message
-from logging_channel import log_event, format_user_for_log
+from logging_channel import format_user_for_log
+from logger import logger, Event
 from send_helpers import send_music_if_any, send_description
 from picker_state import last_audio_url, last_video_src, last_video_desc
 from keyboards import (
@@ -63,14 +64,11 @@ async def dl_cb(call: CallbackQuery):
                 has_music = uid in last_audio_url
                 await call.message.edit_reply_markup(reply_markup=under_video_kb(has_music=has_music, has_desc=False))
         if sent:
-            await log_event(
-                call.bot,
-                "descdl",
-                [
-                    "📑 Категория: <b>Скачивание описания (видео)</b>",
-                    f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                    f"🔗 Ссылка: {code(last_video_src.get(uid) or '')}" if last_video_src.get(uid) else "🔗 Ссылка: -",
-                ],
+            logger.log(
+                Event.DOWNLOAD, "Описание скачано (видео)",
+                status="SUCCESS",
+                user={"id": uid, "username": label if label.startswith("@") else None},
+                content={"type": "description", "source": last_video_src.get(uid) or ""},
             )
         return
 
@@ -161,18 +159,16 @@ async def payment_ok(message: Message):
     store.add_stars(uid, stars)
 
     await message.answer(
-        "✅ <b>Оплата прошла!</b>\n"
+        pe("✅ <b>Оплата прошла!</b>\n"
         f"Получено: <b>{stars} ⭐</b>\n\n"
-        "Спасибо за поддержку 🙌",
+        "Спасибо за поддержку 💛"),
         parse_mode="HTML",
     )
 
-    await log_event(
-        message.bot,
-        "stars",
-        [
-            "⭐ Категория: <b>Пополнение Stars</b>",
-            f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-            f"💫 Сумма: <b>{stars} ⭐</b>",
-        ],
+    logger.log(
+        Event.DONATE, "Донат через Stars",
+        status="SUCCESS",
+        user={"id": uid, "username": label if label.startswith("@") else None},
+        extra={"Stars": stars},
+        force_telegram=True,
     )
