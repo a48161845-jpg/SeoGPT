@@ -14,7 +14,7 @@ from config import BROADCAST_MAX_USERS, BROADCAST_DELAY_SEC, log
 from helpers import html_escape, msk_now, to_html_simple, pe
 from storage import store
 from admin_log_file import log_admin
-from logging_channel import log_event, format_user_for_log
+from logging_channel import format_user_for_log
 from logger import logger, Event
 from keyboards import broadcast_cancel_kb
 
@@ -176,10 +176,12 @@ async def do_broadcast(
 
 
 async def undo_last_broadcast(admin_id: int, bot: Bot) -> int:
-    """Удаляет последнюю рассылку у всех получателей. Возвращает кол-во удалённых сообщений."""
-    data = last_broadcast.get(admin_id)
+    """Удаляет последнюю рассылку у всех получателей. Возвращает кол-во удалённых сообщений.
+    Проверяет личную рассылку, потом системную (авто-рассылки с ключом 0)."""
+    data = last_broadcast.get(admin_id) or last_broadcast.get(0)
     if not data:
         return -1
+    key = admin_id if admin_id in last_broadcast else 0
     removed = 0
     for chat_id, message_id in data.get("chat_message_ids", []):
         try:
@@ -190,7 +192,7 @@ async def undo_last_broadcast(admin_id: int, bot: Bot) -> int:
         except Exception:
             pass
         await asyncio.sleep(0.05)
-    last_broadcast.pop(admin_id, None)
+    last_broadcast.pop(key, None)
     return removed
 
 
@@ -204,7 +206,7 @@ async def do_broadcast_system(bot: Bot, kind: str, raw_text: str) -> None:
                    extra={"Пользователей": len(users)}, force_telegram=True)
         return
 
-    html = to_html_simple(raw_text)
+    html = pe(to_html_simple(raw_text))
     logger.log(Event.BROADCAST, f"Авто-рассылка ({kind}) запущена", status="PENDING",
                extra={"Получателей": len(users)}, force_telegram=True)
 

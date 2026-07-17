@@ -12,7 +12,7 @@ from aiogram.types import Message, LinkPreviewOptions
 from helpers import html_escape, msk_now, period_keys, week_range_str, iter_day_keys, format_msk, pe
 from storage import store
 from admin_log_file import log_admin
-from logging_channel import log_event, log_admin_action_to_channel, format_user_for_log
+from logging_channel import format_user_for_log
 from keyboards import stats_kb, top_kb
 
 
@@ -531,11 +531,7 @@ def _admin_banlist_text() -> str:
 # ================== SEND WRAPPERS ==================
 async def send_stats_message(message: Message, uid: int, label: str, mode: str, *, edit: bool = False) -> None:
     log_admin(uid, "stats", f"mode={mode}")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Статистика",
-        [f"👤 Кто: <b>{format_user_for_log(label, uid)}</b>", f"🧾 Режим: <b>{html_escape(mode)}</b>"],
-    )
+    logger.log(Event.ADMIN, "Статистика запрошена", user={"id": uid}, extra={"Режим": mode}, skip_telegram=True)
     with contextlib.suppress(Exception):
         await message.bot.send_chat_action(message.chat.id, "typing")
     text = pe(_admin_stats_text(mode))
@@ -552,14 +548,7 @@ async def send_stats_message(message: Message, uid: int, label: str, mode: str, 
 
 async def send_stats_range_message(message: Message, uid: int, label: str, start_dt: datetime, end_dt: datetime) -> None:
     log_admin(uid, "stats_range", f"from={start_dt.strftime('%Y-%m-%d')} to={end_dt.strftime('%Y-%m-%d')}")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Статистика (диапазон)",
-        [
-            f"👤 Кто: <b>{format_user_for_log(label, uid)}</b>",
-            f"🧾 Период: <b>{start_dt.strftime('%d.%m.%Y')} - {end_dt.strftime('%d.%m.%Y')}</b>",
-        ],
-    )
+    logger.log(Event.ADMIN, "Статистика (диапазон) запрошена", user={"id": uid}, extra={"От": start_dt.strftime("%d.%m.%Y"), "До": end_dt.strftime("%d.%m.%Y")}, skip_telegram=True)
     with contextlib.suppress(Exception):
         await message.bot.send_chat_action(message.chat.id, "typing")
     text = pe(_admin_stats_range_text(start_dt, end_dt))
@@ -572,11 +561,7 @@ async def send_stats_range_message(message: Message, uid: int, label: str, start
 
 async def send_top_message(message: Message, uid: int, label: str, mode: str, *, edit: bool = False) -> None:
     log_admin(uid, "top", f"mode={mode}")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Топ",
-        [f"👤 Кто: <b>{format_user_for_log(label, uid)}</b>", f"🧾 Режим: <b>{html_escape(mode)}</b>"],
-    )
+    logger.log(Event.ADMIN, "Топ запрошен", user={"id": uid}, extra={"Режим": mode}, skip_telegram=True)
     with contextlib.suppress(Exception):
         await message.bot.send_chat_action(message.chat.id, "typing")
     text = pe(_top_text_for_mode(mode))
@@ -588,14 +573,7 @@ async def send_top_message(message: Message, uid: int, label: str, mode: str, *,
 
 async def send_top_range_message(message: Message, uid: int, label: str, start_dt: datetime, end_dt: datetime) -> None:
     log_admin(uid, "top_range", f"from={start_dt.strftime('%Y-%m-%d')} to={end_dt.strftime('%Y-%m-%d')}")
-    await log_admin_action_to_channel(
-        message.bot,
-        "Топ (диапазон)",
-        [
-            f"👤 Кто: <b>{format_user_for_log(label, uid)}</b>",
-            f"🧾 Период: <b>{start_dt.strftime('%d.%m.%Y')} - {end_dt.strftime('%d.%m.%Y')}</b>",
-        ],
-    )
+    logger.log(Event.ADMIN, "Топ (диапазон) запрошен", user={"id": uid}, extra={"От": start_dt.strftime("%d.%m.%Y"), "До": end_dt.strftime("%d.%m.%Y")}, skip_telegram=True)
     with contextlib.suppress(Exception):
         await message.bot.send_chat_action(message.chat.id, "typing")
     text = pe(_top_text_for_range(start_dt, end_dt))

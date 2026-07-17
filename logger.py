@@ -188,120 +188,74 @@ def build_message(
     extra: Optional[Dict[str, Any]] = None,
     note: Optional[str] = None,
 ) -> str:
-    """
-    Собирает финальный текст лога в едином фирменном стиле (рамка + секции).
-    Каждый параметр опционален — секция строится только если данные переданы.
-    Результат уже прогнан через pe() (premium-эмодзи), безопасен для
-    отправки с parse_mode="HTML".
-    """
     icon = _icon(event)
     name = _title(event)
-    lines: List[str] = [_box_header(icon, name), ""]
+    st_icon = _STATUS_ICON.get((status or "").upper(), "")
 
+    header = f"{icon} <b>{name}</b>"
     if title:
-        lines.append(f"<b>{html_escape(title)}</b>")
-        lines.append("")
+        header += f"  <i>{html_escape(title)}</i>"
+    parts = [header]
 
+    # Пользователь — одна строка
     if user:
-        u_lines = []
-        if "id" in user:
-            u_lines.append(f"ID: <code>{user['id']}</code>")
-        if user.get("username"):
-            u_lines.append(f"Username: @{html_escape(str(user['username']))}")
-        if "premium" in user:
-            u_lines.append(f"Premium: {'да' if user['premium'] else 'нет'}")
-        if u_lines:
-            lines.append("👤 Пользователь")
-            lines.append(_section(u_lines))
-            lines.append("")
+        uid_s = f"<code>{user['id']}</code>" if "id" in user else ""
+        uname_s = f"@{html_escape(str(user['username']))}" if user.get("username") else ""
+        u_str = " · ".join(filter(None, [uid_s, uname_s]))
+        if u_str:
+            parts.append(f"👤 {u_str}")
 
+    # Контент
     if content:
-        c_lines = []
-        if content.get("type"):
-            c_lines.append(f"Тип: {html_escape(str(content['type']))}")
-        if content.get("provider"):
-            c_lines.append(f"Провайдер: {html_escape(str(content['provider']))}")
-        if content.get("size") is not None:
-            c_lines.append(f"Размер: {_fmt_size(content['size'])}")
+        c = []
+        if content.get("type"):   c.append(html_escape(str(content["type"])))
+        if content.get("provider"): c.append(html_escape(str(content["provider"])))
         if content.get("source"):
-            src = str(content["source"])
-            if len(src) > 60:
-                src = src[:57] + "..."
-            c_lines.append(f"Источник: <code>{html_escape(src)}</code>")
-        if c_lines:
-            lines.append("📥 Контент")
-            lines.append(_section(c_lines))
-            lines.append("")
+            s = str(content["source"])
+            c.append(f"<code>{html_escape(s[:55] + ('…' if len(s)>55 else ''))}</code>")
+        if content.get("size"): c.append(_fmt_size(content["size"]))
+        if c: parts.append("📥 " + " · ".join(c))
 
+    # Производительность
     if performance:
-        p_lines = []
-        ordered = [(k, v) for k, v in performance.items() if k != "_total"]
-        labels = {
-            "fetch_url": "Получение ссылки",
-            "get_info": "Получение информации",
-            "download": "Скачивание",
-            "upload": "Отправка",
-            "send": "Отправка Telegram",
-        }
-        for k, v in ordered:
-            p_lines.append(f"{labels.get(k, k)}: {_fmt_duration(v)}")
-        if "_total" in performance:
-            p_lines.append(f"Итого: {_fmt_duration(performance['_total'])}")
-        if p_lines:
-            lines.append("⚡ Производительность")
-            lines.append(_section(p_lines))
-            lines.append("")
+        lbl = {"get_info":"info","download":"dl","upload":"up","send":"send","fetch_url":"url"}
+        pp = [f"{lbl.get(k,k)} {_fmt_duration(v)}" for k,v in performance.items() if k!="_total"]
+        if "_total" in performance: pp.append(f"итого {_fmt_duration(performance['_total'])}")
+        if pp: parts.append("⚡ " + " · ".join(pp))
 
+    # Ошибка
     if error:
-        e_lines = []
-        if error.get("name"):
-            e_lines.append(f"Тип: <code>{html_escape(str(error['name']))}</code>")
-        if error.get("module"):
-            e_lines.append(f"Модуль: {html_escape(str(error['module']))}")
-        if error.get("provider"):
-            e_lines.append(f"Провайдер: {html_escape(str(error['provider']))}")
+        e = []
+        if error.get("name"):    e.append(f"<code>{html_escape(str(error['name']))}</code>")
+        if error.get("provider"): e.append(html_escape(str(error["provider"])))
+        if error.get("attempt"): e.append(f"попытка {error['attempt']}")
+        if error.get("duration_ms"): e.append(_fmt_duration(error["duration_ms"]))
+        if e: parts.append("💥 " + " · ".join(e))
+        if error.get("reason"):  parts.append(f"└ {html_escape(str(error['reason'])[:200])}")
         if error.get("url"):
-            u = str(error["url"])
-            if len(u) > 60:
-                u = u[:57] + "..."
-            e_lines.append(f"URL: <code>{html_escape(u)}</code>")
-        if error.get("attempt"):
-            e_lines.append(f"Попытка: {error['attempt']}")
-        if error.get("duration_ms") is not None:
-            e_lines.append(f"Время выполнения: {_fmt_duration(error['duration_ms'])}")
-        if error.get("reason"):
-            e_lines.append(f"Причина: {html_escape(str(error['reason']))}")
-        if e_lines:
-            lines.append("💥 Детали ошибки")
-            lines.append(_section(e_lines))
-            lines.append("")
+            u = str(error["url"]); u = u[:55]+"…" if len(u)>55 else u
+            parts.append(f"🔗 <code>{html_escape(u)}</code>")
         if error.get("traceback"):
-            tb_text = str(error["traceback"])
-            if len(tb_text) > 600:
-                tb_text = tb_text[-600:]
-            lines.append(f"<pre>{html_escape(tb_text)}</pre>")
-            lines.append("")
+            tb = str(error["traceback"])[-400:]
+            parts.append(f"<pre>{html_escape(tb)}</pre>")
 
+    # Extra
     if extra:
-        x_lines = [f"{html_escape(str(k))}: {html_escape(str(v))}" for k, v in extra.items()]
-        if x_lines:
-            lines.append(_section(x_lines))
-            lines.append("")
+        for k, v in extra.items():
+            if v or v == 0:
+                parts.append(f"└ {html_escape(str(k))}: {html_escape(str(v))}")
 
-    st_line = _status_line(status)
-    if st_line:
-        lines.append(st_line)
-        lines.append("")
+    # Статус + время
+    footer = " · ".join(filter(None, [
+        f"{st_icon} {status.upper()}" if st_icon and status else status.upper() if status else "",
+        now_msk_str()
+    ]))
+    parts.append(f"<i>{footer}</i>")
 
     if note:
-        lines.append(f"<i>{html_escape(note)}</i>")
-        lines.append("")
+        parts.append(f"<i>{html_escape(note)}</i>")
 
-    lines.append(f"🕒 {now_msk_str()}")
-    lines.append("")
-    lines.append(_box_footer())
-
-    return pe("\n".join(lines))
+    return pe("\n".join(parts))
 
 
 @dataclass

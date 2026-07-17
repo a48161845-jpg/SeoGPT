@@ -60,39 +60,22 @@ async def _build_status_text() -> str:
     snap = system_snapshot()
     users_total = len(store.data.get("users", []))
     d = metrics.day
-
     ram = f"{snap['ram_mb']} MB" if snap["ram_mb"] is not None else "—"
     cpu = f"{snap['cpu_pct']}%" if snap["cpu_pct"] is not None else "—"
-    db_status = "✅ подключена" if db_pool_available() else "❌ недоступна"
-    avg_line = f"└ Среднее время: {d.avg_duration_ms()} ms" if d.duration_count else "└ Среднее время: —"
+    db_ok = db_pool_available()
+    avg = f"{d.avg_duration_ms()} ms" if d.duration_count else "—"
+    prov_lines = _provider_status_lines()
 
     lines = [
-        "╭──────────── ⚙️ СТАТУС БОТА ────────────╮",
+        "⚙️ <b>Статус бота</b>  🟢 онлайн",
         "",
-        "🟢 Бот работает",
+        f"👥 Пользователей: <b>{users_total}</b>",
+        f"📥 Скачиваний: <b>{d.downloads}</b>  ошибок: <b>{d.errors}</b>  avg: <b>{avg}</b>",
         "",
-        "👥 Пользователи",
-        f"└ Всего: {users_total}",
+        f"💻 RAM: <b>{ram}</b>  CPU: <b>{cpu}</b>  ⏱ <b>{snap['uptime']}</b>",
+        f"🗄 БД: {'✅' if db_ok else '❌'}  🔌 " + " ".join(prov_lines),
         "",
-        "📥 Скачивания сегодня",
-        f"├ Всего: {d.downloads}",
-        f"├ Ошибок: {d.errors}",
-        avg_line,
-        "",
-        "💻 Ресурсы",
-        f"├ RAM: {ram}",
-        f"├ CPU: {cpu}",
-        f"└ Аптайм: {snap['uptime']}",
-        "",
-        "🗄 База данных",
-        f"└ {db_status}",
-        "",
-        "🔌 Провайдеры",
-        *_provider_status_lines(),
-        "",
-        f"🕒 Обновлено: {now_msk_str()}",
-        "",
-        "╰──────────────────────────────────────╯",
+        f"🕒 {now_msk_str()}",
     ]
     return pe("\n".join(lines))
 

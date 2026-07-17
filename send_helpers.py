@@ -24,7 +24,8 @@ from config import (
 from helpers import html_escape, code, clamp_reason, pe
 from storage import store
 from providers import BaseProvider
-from logging_channel import log_event, format_user_for_log
+from logging_channel import format_user_for_log
+from logger import logger, Event, Stopwatch
 
 
 def chunk(items: List[str], size: int) -> List[List[str]]:
@@ -179,14 +180,11 @@ async def send_music_if_any(
         if uid is not None:
             store.inc_audio(uid, 1)
         if label is not None:
-            await log_event(
-                message.bot,
-                "audiodl",
-                [
-                    "🎵 Категория: <b>Скачивание музыки</b>",
-                    f"👤 User/id: <b>{format_user_for_log(label, user_id)}</b>",
-                    f"🔗 Ссылка: {code(src or '')}" if src else "🔗 Ссылка: -",
-                ],
+            logger.log(
+                Event.DOWNLOAD, "Музыка скачана",
+                status="SUCCESS",
+                user={"id": user_id, "username": label if label.startswith("@") else None},
+                content={"type": "audio", "provider": type(provider).__name__, "source": src or ""},
             )
         return
     except TelegramBadRequest as e:
@@ -198,27 +196,21 @@ async def send_music_if_any(
             if uid is not None:
                 store.inc_audio(uid, 1)
             if label is not None:
-                await log_event(
-                    message.bot,
-                    "audiodl",
-                    [
-                        "🎵 Категория: <b>Скачивание музыки</b>",
-                        f"👤 User/id: <b>{format_user_for_log(label, user_id)}</b>",
-                        f"🔗 Ссылка: {code(src or '')}" if src else "🔗 Ссылка: -",
-                    ],
+                logger.log(
+                    Event.DOWNLOAD, "Музыка скачана (fallback)",
+                    status="SUCCESS",
+                    user={"id": user_id, "username": label if label.startswith("@") else None},
+                    content={"type": "audio", "provider": type(provider).__name__, "source": src or ""},
                 )
         except Exception as fallback_err:
             if label is not None:
-                await log_event(
-                    message.bot,
-                    "dlerr",
-                    [
-                        "❌ Категория: <b>Ошибка скачивания</b>",
-                        f"👤 User/id: <b>{format_user_for_log(label, user_id)}</b>",
-                        "🧩 Стадия: <b>audio</b>",
-                        f"🔗 Ссылка: {code(src or '')}" if src else "🔗 Ссылка: -",
-                        f"🧨 Причина: <b>{html_escape(clamp_reason(fallback_err))}</b>",
-                    ],
+                logger.log_exception(
+                    fallback_err,
+                    module="send_helpers.send_music_if_any",
+                    user={"id": user_id, "username": label if label.startswith("@") else None},
+                    provider=type(provider).__name__,
+                    url=src,
+                    title="Ошибка скачивания музыки",
                 )
             raise
         finally:

@@ -5,10 +5,10 @@
 from aiogram.types import Message, CallbackQuery
 
 from config import MSG_SPAM, BAN_REASON_SPAM, log
-from helpers import html_escape, is_admin, is_chatty_message
+from helpers import html_escape, is_admin, is_chatty_message, pe
 from storage import store
 from limiters import lim
-from logging_channel import log_event, format_user_for_log
+from logger import logger, Event
 from strikes import add_spam_strike, ban_message
 
 
@@ -16,15 +16,13 @@ async def gate_message(message: Message, label: str) -> bool:
     uid = message.from_user.id
     ban = store.get_ban(uid)
     if ban:
-        log.info("gate_message: user banned uid=%s label=%s reason=%s", uid, label, ban.get("reason", ""))
-        await log_event(
-            message.bot,
-            "gate_ban",
-            [
-                "🚫 Категория: <b>Сообщение заблокировано (бан)</b>",
-                f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-                f"📋 Причина: <b>{html_escape(str(ban.get('reason', 'Не указана')))}</b>",
-            ],
+        log.info("gate_message: user banned uid=%s label=%s", uid, label)
+        logger.log(
+            Event.SECURITY,
+            "Сообщение заблокировано (бан)",
+            status="FAIL",
+            user={"id": uid, "username": label if label.startswith("@") else None},
+            extra={"Причина": str(ban.get("reason", "Не указана"))},
         )
         await ban_message(message, label, int(ban.get("until", 0)), str(ban.get("reason", "Не указана")))
         return False
@@ -39,7 +37,6 @@ async def gate_message(message: Message, label: str) -> bool:
         if ok:
             return True
 
-        # Флуд во время кулдауна — может привести к бану (без страйков)
         if started_cd_now:
             until_ban = await add_spam_strike(message.bot, uid, label, "Флуд/слишком часто")
             if until_ban:
@@ -61,13 +58,11 @@ async def gate_callback(call: CallbackQuery, label: str) -> bool:
     ban = store.get_ban(uid)
     if ban:
         log.info("gate_callback: user banned uid=%s", uid)
-        await log_event(
-            call.bot,
-            "gate_ban",
-            [
-                "🚫 Категория: <b>Кнопка заблокирована (бан)</b>",
-                f"👤 User/id: <b>{format_user_for_log(label, uid)}</b>",
-            ],
+        logger.log(
+            Event.SECURITY,
+            "Кнопка заблокирована (бан)",
+            status="FAIL",
+            user={"id": uid, "username": label if label.startswith("@") else None},
         )
         await call.answer("Вы в бане.", show_alert=True)
         return False

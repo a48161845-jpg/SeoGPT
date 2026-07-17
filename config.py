@@ -97,8 +97,8 @@ BAN_REASON_DL = "Лимит скачиваний"
 BAN_REASON_PHOTO = "Лимит фото"
 
 # Подпись с указанием бота
-CAPTION_PHOTO = '<tg-emoji emoji-id="5774022692642492953">✅</tg-emoji> <b>Готово!</b> <tg-emoji emoji-id="6030466823290360017">🖼️</tg-emoji>\nПриятного просмотра 😎\n\n<tg-emoji emoji-id="6039420807900303010">📥</tg-emoji> Скачано в боте @tiksavesbot'
-CAPTION_VIDEO = '<tg-emoji emoji-id="5774022692642492953">✅</tg-emoji> <b>Готово!</b> <tg-emoji emoji-id="5937999673510858217">🎬</tg-emoji>\nПриятного просмотра 😎\n\n<tg-emoji emoji-id="6039420807900303010">📥</tg-emoji> Скачано в боте @tiksavesbot'
+CAPTION_PHOTO = '<tg-emoji emoji-id="5774022692642492953">✅</tg-emoji> <b>Готово!</b> <tg-emoji emoji-id="6030466823290360017">🖼️</tg-emoji>\nПриятного просмотра <tg-emoji emoji-id="5935824500208702046">😎</tg-emoji>\n\n<tg-emoji emoji-id="6039420807900303010">📥</tg-emoji> Скачано в боте @tiksavesbot'
+CAPTION_VIDEO = '<tg-emoji emoji-id="5774022692642492953">✅</tg-emoji> <b>Готово!</b> <tg-emoji emoji-id="5937999673510858217">🎬</tg-emoji>\nПриятного просмотра <tg-emoji emoji-id="5935824500208702046">😎</tg-emoji>\n\n<tg-emoji emoji-id="6039420807900303010">📥</tg-emoji> Скачано в боте @tiksavesbot'
 CAPTION_AUDIO = '<tg-emoji emoji-id="5938473438468378529">🎵</tg-emoji> <b>Звук из TikTok</b>\n\n<tg-emoji emoji-id="6039420807900303010">📥</tg-emoji> Скачано в боте @tiksavesbot'
 
 ALBUM_PAUSE_MIN = 0.4
